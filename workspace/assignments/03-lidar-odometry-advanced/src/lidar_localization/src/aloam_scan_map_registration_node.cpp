@@ -617,7 +617,7 @@ void process()
 								point_b = -0.1 * unit_direction + point_on_line;
 
 								// ceres::CostFunction *cost_function = LidarEdgeFactor::Create(curr_point, point_a, point_b, 1.0);
-								ceres::CostFunction *cost_function = new LidarEdgeAnalyticalFactor(curr_point, point_a, point_b);
+								ceres::CostFunction *cost_function = new LidarEdgeAnalyticalFactor(curr_point, point_a, point_b, 1.0);
 								problem.AddResidualBlock(cost_function, loss_function, parameters, parameters + 4);
 								corner_num++;	
 							}							

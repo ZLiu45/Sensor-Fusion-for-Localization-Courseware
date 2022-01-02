@@ -79,14 +79,16 @@ public:
   LidarEdgeAnalyticalFactor() = delete;
   LidarEdgeAnalyticalFactor(Eigen::Vector3d curr_point_,
                             Eigen::Vector3d last_point_a_,
-                            Eigen::Vector3d last_point_b_)
+                            Eigen::Vector3d last_point_b_, double s_)
       : curr_point(curr_point_), last_point_a(last_point_a_),
-        last_point_b(last_point_b_) {}
+        last_point_b(last_point_b_), s(s_) {}
 
   virtual bool Evaluate(double const *const *parameters, double *residuals,
                         double **jacobians) const {
-    // compute residuals
-    const Eigen::Map<const Eigen::Quaterniond> q_last_curr(parameters[0]);
+    Eigen::Quaterniond q_last_curr((*parameters)[3], (*parameters)[0],
+                                   (*parameters)[1], (*parameters)[2]);
+    q_last_curr = Eigen::Quaterniond::Identity().slerp(s, q_last_curr);
+
     const Eigen::Map<const Eigen::Vector3d> t_last_curr(parameters[0] + 4);
     const Eigen::Vector3d rotated_curr_p = q_last_curr * curr_point;
     const Eigen::Vector3d p_i = rotated_curr_p + t_last_curr;
@@ -95,8 +97,8 @@ public:
     const Eigen::Vector3d de = last_point_a - last_point_b;
     const double de_norm = de.norm();
     const double nu_norm = nu.norm();
+    // compute residuals
     residuals[0] = nu_norm / de_norm;
-
     // compute jacobians
     if (jacobians) {
       const Eigen::Matrix<double, 1, 3> first_two_terms =
@@ -105,7 +107,7 @@ public:
         Eigen::Map<Eigen::Matrix<double, 1, 4>> J_edge_over_rot(jacobians[0]);
         J_edge_over_rot << first_two_terms * skew(-rotated_curr_p), 0;
       }
-	  if (jacobians[1]) {
+      if (jacobians[1]) {
         Eigen::Map<Eigen::Matrix<double, 1, 3>> J_edge_over_t(jacobians[1]);
         J_edge_over_t << first_two_terms;
       }
@@ -115,6 +117,7 @@ public:
   }
 
   Eigen::Vector3d curr_point, last_point_a, last_point_b;
+  double s;
 };
 
 struct LidarPlaneFactor {
@@ -163,6 +166,54 @@ struct LidarPlaneFactor {
     return (new ceres::AutoDiffCostFunction<LidarPlaneFactor, 1, 4, 3>(
         new LidarPlaneFactor(curr_point_, last_point_j_, last_point_l_,
                              last_point_m_, s_)));
+  }
+
+  Eigen::Vector3d curr_point, last_point_j, last_point_l, last_point_m;
+  Eigen::Vector3d ljm_norm;
+  double s;
+};
+
+class LidarPlaneAnalyticalFactor : public ceres::SizedCostFunction<1, 4, 3> {
+public:
+  LidarPlaneAnalyticalFactor() = delete;
+  LidarPlaneAnalyticalFactor(Eigen::Vector3d curr_point_,
+                             Eigen::Vector3d last_point_j_,
+                             Eigen::Vector3d last_point_l_,
+                             Eigen::Vector3d last_point_m_, const double s_)
+      : curr_point(curr_point_), last_point_j(last_point_j_),
+        last_point_l(last_point_l_), last_point_m(last_point_m_), s(s_) {
+    ljm_norm = (last_point_j - last_point_l).cross(last_point_j - last_point_m);
+    ljm_norm.normalize();
+  }
+
+  virtual bool Evaluate(double const *const *parameters, double *residuals,
+                        double **jacobians) const {
+    Eigen::Quaterniond q_last_curr((*parameters)[3], (*parameters)[0],
+                                   (*parameters)[1], (*parameters)[2]);
+    q_last_curr = Eigen::Quaterniond::Identity().slerp(s, q_last_curr);
+
+    const Eigen::Map<const Eigen::Vector3d> t_last_curr(parameters[0] + 4);
+    const Eigen::Vector3d rotated_curr_p = q_last_curr * curr_point;
+    const Eigen::Vector3d p_i = rotated_curr_p + t_last_curr;
+	const Eigen::Vector3d p_i_j = p_i - last_point_j; 
+
+	const double x = p_i_j.transpose() * ljm_norm; 
+	// compute residuals
+    residuals[0] = std::fabs(x);
+    // compute jacobians
+	if (jacobians) {
+		const Eigen::Matrix<double, 1, 3> first_term = x/std::fabs(x) * ljm_norm.transpose(); 
+		if (jacobians[0]) {
+			Eigen::Map<Eigen::Matrix<double, 1, 4>> J_plane_over_rot(jacobians[0]); 
+			J_plane_over_rot << first_term * skew(-rotated_curr_p), 0.0; 
+		}
+		if (jacobians[1]) {
+			Eigen::Map<Eigen::Matrix<double, 1, 3>> J_plane_over_t(jacobians[1]); 
+			J_plane_over_t << first_term; 
+		}
+	}
+
+    return true;
   }
 
   Eigen::Vector3d curr_point, last_point_j, last_point_l, last_point_m;
