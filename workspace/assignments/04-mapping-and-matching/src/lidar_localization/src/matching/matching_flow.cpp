@@ -52,7 +52,6 @@ bool MatchingFlow::Run() {
       LOG(INFO) << "Invalid data. Skip matching" << std::endl;
       continue;
     }
-    LOG(WARNING) << gnss_data_buff_.size() << std::endl;
 
     if (UpdateMatching()) {
       PublishData();
@@ -84,7 +83,6 @@ bool MatchingFlow::HasData() {
 
 bool MatchingFlow::ValidData() {
   current_cloud_data_ = cloud_data_buff_.front();
-
   if (matching_ptr_->HasInited()) {
     cloud_data_buff_.pop_front();
     gnss_data_buff_.clear();
@@ -92,9 +90,7 @@ bool MatchingFlow::ValidData() {
   }
 
   current_gnss_data_ = gnss_data_buff_.front();
-
   double diff_time = current_cloud_data_.time - current_gnss_data_.time;
-  LOG(ERROR) << "diff time " << diff_time << std::endl;
   if (diff_time < -0.05) {
     cloud_data_buff_.pop_front();
     return false;
@@ -104,9 +100,8 @@ bool MatchingFlow::ValidData() {
     gnss_data_buff_.pop_front();
     return false;
   }
-
-  cloud_data_buff_.pop_front();
-  gnss_data_buff_.pop_front();
+  //   cloud_data_buff_.pop_front();
+  //   gnss_data_buff_.pop_front();
 
   return true;
 }
@@ -120,18 +115,20 @@ bool MatchingFlow::UpdateMatching() {
     // Hints: You can use SetGNSSPose & SetScanContextPose from matching.hpp
     //
 
-    if (gnss_data_buff_.empty()) {
+    if (gnss_data_buff_.empty() && cloud_data_buff_.empty()) {
       return false;
-    } else {
-      Eigen::Matrix4f init_pose = gnss_data_buff_.front().pose;
-      matching_ptr_->SetInitPose(init_pose);
-      matching_ptr_->SetInited();
     }
 
-    // // naive implementation:
-    // Eigen::Matrix4f init_pose = gnss_data_buff_.front().pose;
-    // matching_ptr_->SetInitPose(init_pose);
-    // matching_ptr_->SetInited();
+    // LOG(INFO) << "gnss data size: " << gnss_data_buff_.size() << std::endl;
+    // LOG(INFO) << "gnss data pose: " << std::setw(12) << std::setprecision(9)
+    //           << gnss_data_buff_.front().time << " "
+    //           << gnss_data_buff_.front().pose.col(3).transpose() << std::endl;
+    if (!gnss_data_buff_.empty()) {
+      matching_ptr_->SetGNSSPose(gnss_data_buff_.back().pose);
+    } else {
+      matching_ptr_->SetScanContextPose(cloud_data_buff_.back());
+    }
+
   }
 
   return matching_ptr_->Update(current_cloud_data_, laser_odometry_);

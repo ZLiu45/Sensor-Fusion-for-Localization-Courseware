@@ -8,19 +8,19 @@
 #include "glog/logging.h"
 
 //静态成员变量必须在类外初始化
-double lidar_localization::GNSSData::origin_longitude = 0.0;
-double lidar_localization::GNSSData::origin_latitude = 0.0;
-double lidar_localization::GNSSData::origin_altitude = 0.0;
+double lidar_localization::GNSSData::origin_longitude = 8.39036610005;
+double lidar_localization::GNSSData::origin_latitude = 48.9825452359; 
+double lidar_localization::GNSSData::origin_altitude = 116.382141113;
 bool lidar_localization::GNSSData::origin_position_inited = false;
 GeographicLib::LocalCartesian lidar_localization::GNSSData::geo_converter;
 
 namespace lidar_localization {
 void GNSSData::InitOriginPosition() {
-    geo_converter.Reset(latitude, longitude, altitude);
+    geo_converter.Reset(origin_latitude, origin_longitude, origin_altitude);
 
-    origin_longitude = longitude;
-    origin_latitude = latitude;
-    origin_altitude = altitude;
+    // origin_longitude = longitude;
+    // origin_latitude = latitude;
+    // origin_altitude = altitude;
 
     origin_position_inited = true;
 }
@@ -29,8 +29,10 @@ void GNSSData::UpdateXYZ() {
     if (!origin_position_inited) {
         LOG(WARNING) << "GeoConverter has not set origin position";
     }
+
     geo_converter.Forward(latitude, longitude, altitude, local_E, local_N, local_U);
 }
+
 
 bool GNSSData::SyncData(std::deque<GNSSData>& UnsyncedData, std::deque<GNSSData>& SyncedData, double sync_time) {
     // 传感器数据按时间序列排列，在传感器数据中为同步的时间点找到合适的时间位置
