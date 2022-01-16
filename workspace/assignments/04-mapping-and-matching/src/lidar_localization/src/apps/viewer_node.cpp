@@ -34,14 +34,14 @@ int main(int argc, char *argv[]) {
     std::shared_ptr<ViewerFlow> _viewer_flow_ptr = std::make_shared<ViewerFlow>(nh, cloud_topic);
 
     ros::ServiceServer service = nh.advertiseService("save_map", save_map_callback);
-
+    _need_save_map = true; 
     ros::Rate rate(100);
     while (ros::ok()) {
         ros::spinOnce();
 
         _viewer_flow_ptr->Run();
         if (_need_save_map) {
-            _need_save_map = false;
+            // _need_save_map = false;
             _viewer_flow_ptr->SaveMap();
         }
 
