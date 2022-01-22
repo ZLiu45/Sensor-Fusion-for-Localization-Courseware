@@ -72,7 +72,7 @@ template <typename _T1> struct MultiPosAccResidual {
      * assume body frame same as accelerometer frame,
      * so bottom left params in the misalignment matris are set to zero */
     CalibratedTriad_<_T2> calib_triad(
-        //        //
+        // TODO: implement lower triad model here
         // mis_yz, mis_zy, mis_zx:
         _T2(0), _T2(0),_T2(0),
         // mis_xz, mis_xy, mis_yx:
