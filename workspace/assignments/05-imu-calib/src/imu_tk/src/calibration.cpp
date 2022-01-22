@@ -19,7 +19,7 @@
  *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
  *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,  OR PROFITS; OR BUSINESS
  *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
  *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
@@ -72,13 +72,11 @@ template <typename _T1> struct MultiPosAccResidual {
      * assume body frame same as accelerometer frame,
      * so bottom left params in the misalignment matris are set to zero */
     CalibratedTriad_<_T2> calib_triad(
-        //
-        // TODO: implement lower triad model here
-        //
+        //        //
         // mis_yz, mis_zy, mis_zx:
-        params[0], params[1], params[2],
+        _T2(0), _T2(0),_T2(0),
         // mis_xz, mis_xy, mis_yx:
-        _T2(0), _T2(0), _T2(0),
+        params[0], params[1], params[2],
         //    s_x,    s_y,    s_z:
         params[3], params[4], params[5],
         //    b_x,    b_y,    b_z:
@@ -201,9 +199,9 @@ bool MultiPosCalibration_<_T>::calibrateAcc(
     //
     // TODO: implement lower triad model here
     //
-    acc_calib_params[0] = init_acc_calib_.misYZ();
-    acc_calib_params[1] = init_acc_calib_.misZY();
-    acc_calib_params[2] = init_acc_calib_.misZX();
+    acc_calib_params[0] = init_acc_calib_.misXZ();
+    acc_calib_params[1] = init_acc_calib_.misXY();
+    acc_calib_params[2] = init_acc_calib_.misYX();
 
     acc_calib_params[3] = init_acc_calib_.scaleX();
     acc_calib_params[4] = init_acc_calib_.scaleY();
@@ -274,11 +272,10 @@ bool MultiPosCalibration_<_T>::calibrateAcc(
       //
       // TODO: implement lower triad model here
       //
-      min_cost_calib_params[0], min_cost_calib_params[1],
-      min_cost_calib_params[2], 0, 0, 0, min_cost_calib_params[3],
-      min_cost_calib_params[4], min_cost_calib_params[5],
-      min_cost_calib_params[6], min_cost_calib_params[7],
-      min_cost_calib_params[8]);
+      0,  0,  0, 
+      min_cost_calib_params[0], min_cost_calib_params[1], min_cost_calib_params[2], 
+      min_cost_calib_params[3], min_cost_calib_params[4], min_cost_calib_params[5],
+      min_cost_calib_params[6], min_cost_calib_params[7], min_cost_calib_params[8]);
 
   calib_acc_samples_.reserve(n_samps);
 
