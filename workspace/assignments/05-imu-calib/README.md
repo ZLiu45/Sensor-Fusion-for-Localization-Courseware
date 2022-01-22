@@ -54,4 +54,4 @@ acc_calib_ = CalibratedTriad_<_T>(
         //    b_x,    b_y,    b_z:
         params[6], params[7], params[8]);
 ```
-
+## Calibration with Analytical Jacobians
