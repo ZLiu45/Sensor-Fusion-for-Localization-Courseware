@@ -17,7 +17,7 @@ for (int th_mult = 2; th_mult <= 10; th_mult++) {
     // TODO: implement lower triad model here
     //
     acc_calib_params[0] = init_acc_calib_.misXZ();
-    acc_calib_params[1] = init_acc_calib_.misXY();
+    acc_calib_params[1] = -init_acc_calib_.misXY();
     acc_calib_params[2] = init_acc_calib_.misYX();
 
     acc_calib_params[3] = init_acc_calib_.scaleX();
