@@ -74,7 +74,7 @@ template <typename _T1> struct MultiPosAccResidual {
     CalibratedTriad_<_T2> calib_triad(
         // TODO: implement lower triad model here
         // mis_yz, mis_zy, mis_zx:
-        _T2(0), _T2(0),_T2(0),
+        _T2(0), _T2(0), _T2(0),
         // mis_xz, mis_xy, mis_yx:
         params[0], params[1], params[2],
         //    s_x,    s_y,    s_z:
@@ -86,7 +86,7 @@ template <typename _T1> struct MultiPosAccResidual {
     Eigen::Matrix<_T2, 3, 1> calib_samp = calib_triad.unbiasNormalize(raw_samp);
 
     residuals[0] = _T2(g_mag_) - calib_samp.norm();
-
+    // std::cout << "residual 0: " << residuals[0] << std::endl;
     return true;
   }
 
@@ -99,6 +99,253 @@ template <typename _T1> struct MultiPosAccResidual {
   const _T1 g_mag_;
   const Eigen::Matrix<_T1, 3, 1> sample_;
 };
+
+template <typename _T_a>
+class MultiPosAccCostFunctor : public ceres::SizedCostFunction<1, 9> {
+public:
+  MultiPosAccCostFunctor(const _T_a &g_mag,
+                         const Eigen::Matrix<_T_a, 3, 1> &sample)
+      : g_mag_(g_mag), sample_(sample) {}
+
+  virtual bool Evaluate(_T_a const *const *params, _T_a *residuals,
+                        _T_a **jacobians) const {
+    // compute the residuals
+    CalibratedTriad_<_T_a> calib_triad(
+        // mis_yz, mis_zy, mis_zx:
+        _T_a(0), _T_a(0), _T_a(0),
+        // mis_xz, mis_xy, mis_yx:
+        (*params)[0], (*params)[1], (*params)[2],
+        //    s_x,    s_y,    s_z:
+        (*params)[3], (*params)[4], (*params)[5],
+        //    b_x,    b_y,    b_z:
+        (*params)[6], (*params)[7], (*params)[8]);
+    Eigen::Matrix<_T_a, 3, 1> raw_samp(_T_a(sample_(0)), _T_a(sample_(1)),
+                                       _T_a(sample_(2)));
+
+    Eigen::Matrix<_T_a, 3, 3> S = Eigen::Matrix<_T_a, 3, 3>::Zero();
+    S(1, 0) = (*params)[0];
+    S(2, 0) = (*params)[1];
+    S(2, 1) = (*params)[2];
+    Eigen::Matrix<_T_a, 3, 3> I = Eigen::Matrix<_T_a, 3, 3>::Identity();
+    Eigen::Matrix<_T_a, 3, 3> I_minus_S = I - S;
+
+    Eigen::Matrix<_T_a, 3, 1> K_vec((*params)[3], (*params)[4], (*params)[5]);
+
+    Eigen::Matrix<_T_a, 3, 1> ba((*params)[6], (*params)[7], (*params)[8]);
+    Eigen::Matrix<_T_a, 3, 1> unbiased_samp = raw_samp - ba;
+
+    Eigen::Matrix<_T_a, 3, 3> K_prime;
+    K_prime.setZero();
+    K_prime.diagonal() << 1.0 / K_vec.x(), 1.0 / K_vec.y(), 1.0 / K_vec.z();
+    Eigen::Matrix<_T_a, 3, 1> true_samp = I_minus_S * K_prime * unbiased_samp;
+    residuals[0] = 0.5 * (_T_a(g_mag_) - true_samp.norm());
+
+    // compute jacobians
+    if (jacobians) {
+      if (jacobians[0]) {
+
+        Eigen::Map<Eigen::Matrix<_T_a, 1, 9>> jac(jacobians[0]);
+        jac.setZero();
+        // jacobian over mis_alignment
+        Eigen::Matrix<_T_a, 3, 3> jac_a_S;
+        jac_a_S.setZero();
+        jac_a_S(1, 0) = -unbiased_samp.x() / K_vec.x();
+        jac_a_S(2, 1) = -unbiased_samp.x() / K_vec.x();
+        jac_a_S(2, 2) = -unbiased_samp.y() / K_vec.y();
+        jac.leftCols(3) = -true_samp.transpose() * jac_a_S;
+
+        // jacobian over Scalar
+        Eigen::Matrix<_T_a, 3, 3> jac_a_K;
+        jac_a_K.setZero();
+        jac_a_K(0, 0) = -unbiased_samp.x() / (K_vec.x() * K_vec.x());
+        jac_a_K(1, 0) = -S(1, 0) * jac_a_K(0, 0);
+        jac_a_K(1, 1) = -unbiased_samp.y() / (K_vec.y() * K_vec.y());
+        jac_a_K(2, 0) = -S(2, 0) * jac_a_K(0, 0);
+        jac_a_K(2, 1) = -S(2, 1) * jac_a_K(1, 1);
+        jac_a_K(2, 2) = -unbiased_samp.z() / (K_vec.z() * K_vec.z());
+        jac.block(0, 3, 1, 3) = -true_samp.transpose() * jac_a_K;
+
+        // jacobian over bias
+        Eigen::Matrix<_T_a, 3, 3> jac_a_ba;
+        jac_a_ba.setZero();
+        jac_a_ba.diagonal() << -1 / K_vec.x(), -1 / K_vec.y(), -1 / K_vec.z();
+        jac_a_ba(1, 0) = S(1, 0) / K_vec.x();
+        jac_a_ba(2, 0) = S(2, 0) / K_vec.x();
+        jac_a_ba(2, 1) = S(2, 1) / K_vec.y();
+        jac.rightCols(3) = -true_samp.transpose() * jac_a_ba;
+      }
+    }
+    return true;
+  }
+
+private:
+  const _T_a g_mag_;
+  const Eigen::Matrix<_T_a, 3, 1> sample_;
+};
+
+class AccParameterization : public ceres::LocalParameterization {
+  virtual bool Plus(const double *x, const double *delta,
+                    double *x_plus_delta) const {
+    for (size_t i = 0; i < 9; i++) {
+      x_plus_delta[i] = x[i] + delta[i];
+    }
+  }
+  virtual bool ComputeJacobian(const double *x, double *jacobian) const {
+    Eigen::Map<Eigen::Matrix<double, 9, 9>> jac(jacobian);
+    jac.setIdentity();
+  }
+  virtual int GlobalSize() const { return 9; };
+  virtual int LocalSize() const { return 9; };
+};
+
+template <typename _T>
+MultiPosCalibration_<_T>::MultiPosCalibration_()
+    : g_mag_(9.81), min_num_intervals_(12), init_interval_duration_(_T(30.0)),
+      interval_n_samples_(100), acc_use_means_(false), gyro_dt_(-1.0),
+      optimize_gyro_bias_(false), verbose_output_(false) {}
+
+template <typename _T>
+bool MultiPosCalibration_<_T>::calibrateAcc(
+    const std::vector<TriadData_<_T>> &acc_samples) {
+  cout << "Accelerometer Calibration: Calibrating..." << endl;
+
+  min_cost_static_intervals_.clear();
+  calib_acc_samples_.clear();
+  calib_gyro_samples_.clear();
+
+  int n_samps = acc_samples.size();
+
+  DataInterval init_static_interval =
+      DataInterval::initialInterval(acc_samples, init_interval_duration_);
+  Eigen::Matrix<_T, 3, 1> acc_variance =
+      dataVariance(acc_samples, init_static_interval);
+  _T norm_th = acc_variance.norm();
+
+  _T min_cost = std::numeric_limits<_T>::max();
+  int min_cost_th = -1;
+  std::vector<double> min_cost_calib_params;
+
+  for (int th_mult = 2; th_mult <= 10; th_mult++) {
+    std::vector<imu_tk::DataInterval> static_intervals;
+    std::vector<imu_tk::TriadData_<_T>> static_samples;
+    std::vector<double> acc_calib_params(9);
+
+    acc_calib_params[0] = init_acc_calib_.misXZ();
+    acc_calib_params[1] = -init_acc_calib_.misXY();
+    acc_calib_params[2] = init_acc_calib_.misYX();
+
+    acc_calib_params[3] = init_acc_calib_.scaleX();
+    acc_calib_params[4] = init_acc_calib_.scaleY();
+    acc_calib_params[5] = init_acc_calib_.scaleZ();
+
+    acc_calib_params[6] = init_acc_calib_.biasX();
+    acc_calib_params[7] = init_acc_calib_.biasY();
+    acc_calib_params[8] = init_acc_calib_.biasZ();
+
+    std::vector<DataInterval> extracted_intervals;
+    staticIntervalsDetector(acc_samples, th_mult * norm_th, static_intervals);
+    extractIntervalsSamples(acc_samples, static_intervals, static_samples,
+                            extracted_intervals, interval_n_samples_,
+                            acc_use_means_);
+
+    if (verbose_output_) {
+      cout << "Accelerometers Calibration: Extracted "
+           << extracted_intervals.size()
+           << " intervals using threshold multiplier " << th_mult << " -> ";
+    }
+
+    if (extracted_intervals.size() < min_num_intervals_) {
+      if (verbose_output_)
+        cout << "Not enough intervals, calibration is not possible" << endl;
+      continue;
+    }
+
+    if (verbose_output_)
+      cout << "Trying calibrate... " << endl;
+
+    ceres::Problem problem;
+
+    for (int i = 0; i < static_samples.size(); i++) {
+      // std::cout << "params: " << std::endl;
+      // for (const auto param : acc_calib_params) {
+      //   std::cout << param << " ";
+      // }
+      // std::cout << std::endl;
+
+      // ceres::CostFunction *cost_function =
+      //     MultiPosAccResidual<_T>::Create(g_mag_, static_samples[i].data());
+      // problem.AddResidualBlock(
+      //     cost_function,          /* error fuction */
+      //     NULL,                   /* squared loss */
+      //     acc_calib_params.data() /* accel deterministic error params */
+      // );
+
+      MultiPosAccCostFunctor<_T> *cost_function =
+          new MultiPosAccCostFunctor<_T>(g_mag_, static_samples[i].data());
+      problem.AddResidualBlock(
+          cost_function,          /* error fuction */
+          NULL,                   /* squared loss */
+          acc_calib_params.data() /* accel deterministic error params */
+      );
+    }
+
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::DENSE_QR;
+    options.minimizer_progress_to_stdout = verbose_output_;
+
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    if (summary.final_cost < min_cost) {
+      min_cost = summary.final_cost;
+      min_cost_th = th_mult;
+      min_cost_static_intervals_ = static_intervals;
+      min_cost_calib_params = acc_calib_params;
+    }
+    cout << "residual " << summary.final_cost << endl;
+  }
+
+  if (min_cost_th < 0) {
+    if (verbose_output_)
+      cout << "Accelerometers calibration: Can't obtain any calibratin with "
+              "the current dataset"
+           << endl;
+    return false;
+  }
+
+  acc_calib_ = CalibratedTriad_<_T>(
+      //
+      // TODO: implement lower triad model here
+      //
+      0, 0, 0, min_cost_calib_params[0], min_cost_calib_params[1],
+      min_cost_calib_params[2], min_cost_calib_params[3],
+      min_cost_calib_params[4], min_cost_calib_params[5],
+      min_cost_calib_params[6], min_cost_calib_params[7],
+      min_cost_calib_params[8]);
+
+  calib_acc_samples_.reserve(n_samps);
+
+  // Calibrate the input accelerometer data with the obtained calibration
+  for (int i = 0; i < n_samps; i++)
+    calib_acc_samples_.push_back(acc_calib_.unbiasNormalize(acc_samples[i]));
+
+  if (verbose_output_) {
+    Plot plot;
+    plot.plotIntervals(calib_acc_samples_, min_cost_static_intervals_);
+
+    cout << "Accelerometers calibration: Better calibration obtained using "
+            "threshold multiplier "
+         << min_cost_th << " with residual " << min_cost << endl
+         << acc_calib_ << endl
+         << "Accelerometers calibration: inverse scale factors:" << endl
+         << 1.0 / acc_calib_.scaleX() << endl
+         << 1.0 / acc_calib_.scaleY() << endl
+         << 1.0 / acc_calib_.scaleZ() << endl;
+
+    waitForKey();
+  }
+
+  return true;
+}
 
 template <typename _T1> struct MultiPosGyroResidual {
   MultiPosGyroResidual(const Eigen::Matrix<_T1, 3, 1> &g_versor_pos0,
@@ -163,144 +410,6 @@ template <typename _T1> struct MultiPosGyroResidual {
   const _T1 dt_;
   const bool optimize_bias_;
 };
-
-template <typename _T>
-MultiPosCalibration_<_T>::MultiPosCalibration_()
-    : g_mag_(9.81), min_num_intervals_(12), init_interval_duration_(_T(30.0)),
-      interval_n_samples_(100), acc_use_means_(false), gyro_dt_(-1.0),
-      optimize_gyro_bias_(false), verbose_output_(false) {}
-
-template <typename _T>
-bool MultiPosCalibration_<_T>::calibrateAcc(
-    const std::vector<TriadData_<_T>> &acc_samples) {
-  cout << "Accelerometer Calibration: Calibrating..." << endl;
-
-  min_cost_static_intervals_.clear();
-  calib_acc_samples_.clear();
-  calib_gyro_samples_.clear();
-
-  int n_samps = acc_samples.size();
-
-  DataInterval init_static_interval =
-      DataInterval::initialInterval(acc_samples, init_interval_duration_);
-  Eigen::Matrix<_T, 3, 1> acc_variance =
-      dataVariance(acc_samples, init_static_interval);
-  _T norm_th = acc_variance.norm();
-
-  _T min_cost = std::numeric_limits<_T>::max();
-  int min_cost_th = -1;
-  std::vector<double> min_cost_calib_params;
-
-  for (int th_mult = 2; th_mult <= 10; th_mult++) {
-    std::vector<imu_tk::DataInterval> static_intervals;
-    std::vector<imu_tk::TriadData_<_T>> static_samples;
-    std::vector<double> acc_calib_params(9);
-
-    //
-    // TODO: implement lower triad model here
-    //
-    acc_calib_params[0] = init_acc_calib_.misXZ();
-    acc_calib_params[1] = init_acc_calib_.misXY();
-    acc_calib_params[2] = init_acc_calib_.misYX();
-
-    acc_calib_params[3] = init_acc_calib_.scaleX();
-    acc_calib_params[4] = init_acc_calib_.scaleY();
-    acc_calib_params[5] = init_acc_calib_.scaleZ();
-
-    acc_calib_params[6] = init_acc_calib_.biasX();
-    acc_calib_params[7] = init_acc_calib_.biasY();
-    acc_calib_params[8] = init_acc_calib_.biasZ();
-
-    std::vector<DataInterval> extracted_intervals;
-    staticIntervalsDetector(acc_samples, th_mult * norm_th, static_intervals);
-    extractIntervalsSamples(acc_samples, static_intervals, static_samples,
-                            extracted_intervals, interval_n_samples_,
-                            acc_use_means_);
-
-    if (verbose_output_) {
-      cout << "Accelerometers Calibration: Extracted "
-           << extracted_intervals.size()
-           << " intervals using threshold multiplier " << th_mult << " -> ";
-    }
-
-    // TODO Perform here a quality test
-    if (extracted_intervals.size() < min_num_intervals_) {
-      if (verbose_output_)
-        cout << "Not enough intervals, calibration is not possible" << endl;
-      continue;
-    }
-
-    if (verbose_output_)
-      cout << "Trying calibrate... " << endl;
-
-    ceres::Problem problem;
-    for (int i = 0; i < static_samples.size(); i++) {
-      ceres::CostFunction *cost_function =
-          MultiPosAccResidual<_T>::Create(g_mag_, static_samples[i].data());
-
-      problem.AddResidualBlock(
-          cost_function,          /* error fuction */
-          NULL,                   /* squared loss */
-          acc_calib_params.data() /* accel deterministic error params */
-      );
-    }
-
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::DENSE_QR;
-    options.minimizer_progress_to_stdout = verbose_output_;
-
-    ceres::Solver::Summary summary;
-    ceres::Solve(options, &problem, &summary);
-    if (summary.final_cost < min_cost) {
-      min_cost = summary.final_cost;
-      min_cost_th = th_mult;
-      min_cost_static_intervals_ = static_intervals;
-      min_cost_calib_params = acc_calib_params;
-    }
-    cout << "residual " << summary.final_cost << endl;
-  }
-
-  if (min_cost_th < 0) {
-    if (verbose_output_)
-      cout << "Accelerometers calibration: Can't obtain any calibratin with "
-              "the current dataset"
-           << endl;
-    return false;
-  }
-
-  acc_calib_ = CalibratedTriad_<_T>(
-      //
-      // TODO: implement lower triad model here
-      //
-      0,  0,  0, 
-      min_cost_calib_params[0], min_cost_calib_params[1], min_cost_calib_params[2], 
-      min_cost_calib_params[3], min_cost_calib_params[4], min_cost_calib_params[5],
-      min_cost_calib_params[6], min_cost_calib_params[7], min_cost_calib_params[8]);
-
-  calib_acc_samples_.reserve(n_samps);
-
-  // Calibrate the input accelerometer data with the obtained calibration
-  for (int i = 0; i < n_samps; i++)
-    calib_acc_samples_.push_back(acc_calib_.unbiasNormalize(acc_samples[i]));
-
-  if (verbose_output_) {
-    Plot plot;
-    plot.plotIntervals(calib_acc_samples_, min_cost_static_intervals_);
-
-    cout << "Accelerometers calibration: Better calibration obtained using "
-            "threshold multiplier "
-         << min_cost_th << " with residual " << min_cost << endl
-         << acc_calib_ << endl
-         << "Accelerometers calibration: inverse scale factors:" << endl
-         << 1.0 / acc_calib_.scaleX() << endl
-         << 1.0 / acc_calib_.scaleY() << endl
-         << 1.0 / acc_calib_.scaleZ() << endl;
-
-    waitForKey();
-  }
-
-  return true;
-}
 
 template <typename _T>
 bool MultiPosCalibration_<_T>::calibrateAccGyro(
@@ -429,4 +538,4 @@ bool MultiPosCalibration_<_T>::calibrateAccGyro(
 }
 
 template class MultiPosCalibration_<double>;
-template class MultiPosCalibration_<float>;
+// template class MultiPosCalibration_<float>;
