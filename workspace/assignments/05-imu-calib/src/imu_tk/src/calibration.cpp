@@ -107,8 +107,8 @@ public:
                          const Eigen::Matrix<_T_a, 3, 1> &sample)
       : g_mag_(g_mag), sample_(sample) {}
 
-  virtual bool Evaluate(_T_a const *const *params, _T_a *residuals,
-                        _T_a **jacobians) const {
+  virtual bool Evaluate(double const *const *params, double *residuals,
+                        double **jacobians) const {
     // compute the residuals
     CalibratedTriad_<_T_a> calib_triad(
         // mis_yz, mis_zy, mis_zx:
@@ -119,26 +119,26 @@ public:
         (*params)[3], (*params)[4], (*params)[5],
         //    b_x,    b_y,    b_z:
         (*params)[6], (*params)[7], (*params)[8]);
-    Eigen::Matrix<_T_a, 3, 1> raw_samp(_T_a(sample_(0)), _T_a(sample_(1)),
+    Eigen::Matrix<double, 3, 1> raw_samp(_T_a(sample_(0)), _T_a(sample_(1)),
                                        _T_a(sample_(2)));
 
     Eigen::Matrix<_T_a, 3, 3> S = Eigen::Matrix<_T_a, 3, 3>::Zero();
     S(1, 0) = (*params)[0];
     S(2, 0) = (*params)[1];
     S(2, 1) = (*params)[2];
-    Eigen::Matrix<_T_a, 3, 3> I = Eigen::Matrix<_T_a, 3, 3>::Identity();
-    Eigen::Matrix<_T_a, 3, 3> I_minus_S = I - S;
+    Eigen::Matrix<double, 3, 3> I = Eigen::Matrix<_T_a, 3, 3>::Identity();
+    Eigen::Matrix<double, 3, 3> I_minus_S = I - S;
 
-    Eigen::Matrix<_T_a, 3, 1> K_vec((*params)[3], (*params)[4], (*params)[5]);
+    Eigen::Matrix<double, 3, 1> K_vec((*params)[3], (*params)[4], (*params)[5]);
 
-    Eigen::Matrix<_T_a, 3, 1> ba((*params)[6], (*params)[7], (*params)[8]);
-    Eigen::Matrix<_T_a, 3, 1> unbiased_samp = raw_samp - ba;
+    Eigen::Matrix<double, 3, 1> ba((*params)[6], (*params)[7], (*params)[8]);
+    Eigen::Matrix<double, 3, 1> unbiased_samp = raw_samp - ba;
 
-    Eigen::Matrix<_T_a, 3, 3> K_prime;
+    Eigen::Matrix<double, 3, 3> K_prime;
     K_prime.setZero();
     K_prime.diagonal() << 1.0 / K_vec.x(), 1.0 / K_vec.y(), 1.0 / K_vec.z();
-    Eigen::Matrix<_T_a, 3, 1> true_samp = I_minus_S * K_prime * unbiased_samp;
-    residuals[0] = 0.5 * (_T_a(g_mag_) - true_samp.norm());
+    Eigen::Matrix<double, 3, 1> true_samp = I_minus_S * K_prime * unbiased_samp;
+    residuals[0] = 0.5 * (double(g_mag_ * g_mag_) - true_samp.squaredNorm());
 
     // compute jacobians
     if (jacobians) {
