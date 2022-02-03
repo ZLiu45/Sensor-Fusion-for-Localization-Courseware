@@ -87,7 +87,7 @@ virtual bool Evaluate(_T_a const *const *params, _T_a *residuals,
     K_prime.setZero();
     K_prime.diagonal() << 1.0 / K_vec.x(), 1.0 / K_vec.y(), 1.0 / K_vec.z();
     Eigen::Matrix<_T_a, 3, 1> true_samp = I_minus_S * K_prime * unbiased_samp;
-    residuals[0] = 0.5 * (_T_a(g_mag_) - true_samp.norm());
+    residuals[0] = 0.5 * (double(g_mag_ * g_mag_) - true_samp.squaredNorm());
 
     // compute jacobians
     if (jacobians) {
