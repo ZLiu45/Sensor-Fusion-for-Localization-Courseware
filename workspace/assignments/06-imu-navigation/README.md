@@ -3,8 +3,14 @@
 ## 中值法
 ```
 while (imu_data_buff_.size() > 1) {
-  size_t prev_index = 0;
-  size_t curr_index = 1;
+  size_t prev_index, curr_index;
+  if (integration_method_ == "euler") {
+      prev_index = 0; 
+      curr_index = prev_index; 
+  } else if (integration_method_ == "mid_point") {
+      prev_index = 0; 
+      curr_index = 1; 
+  }
   Eigen::Vector3d angular_delta;
   if (!GetAngularDelta(curr_index, prev_index, angular_delta)) {
     return false;
@@ -25,7 +31,9 @@ while (imu_data_buff_.size() > 1) {
   imu_data_buff_.pop_front();
 }
 ```
-
+## using EVO for evaluation
+![image](https://user-images.githubusercontent.com/11698181/152662207-391f2d49-9a93-4c96-84c9-c2d5c9f09f4a.png)
+![image](https://user-images.githubusercontent.com/11698181/152662224-f93ae0d8-c563-4622-97b8-7149cfe7ad04.png)
 
 
 ## 欧拉法
