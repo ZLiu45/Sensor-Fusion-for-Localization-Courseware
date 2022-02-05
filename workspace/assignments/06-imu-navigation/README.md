@@ -3,14 +3,8 @@
 ## 中值法
 ```
 while (imu_data_buff_.size() > 1) {
-  size_t prev_index, curr_index;
-  if (integration_method_ == "euler") {
-      prev_index = 0; 
-      curr_index = prev_index; 
-  } else if (integration_method_ == "mid_point") {
-      prev_index = 0; 
-      curr_index = 1; 
-  }
+  size_t prev_index = 0; 
+  size_t curr_index = 1; 
   Eigen::Vector3d angular_delta;
   if (!GetAngularDelta(curr_index, prev_index, angular_delta)) {
     return false;
@@ -37,4 +31,18 @@ while (imu_data_buff_.size() > 1) {
 
 
 ## 欧拉法
+In `GetAngularDelta()`: 
+```
+if (integration_method_ == "euler") {
+    angular_delta = delta_t * angular_vel_prev;  
+}
+```
+In `GetVelocityDelta()`: 
+```
+if (integration_method_ == "euler") {
+      velocity_delta = delta_t * linear_acc_prev;
+}
+```
+![image](https://user-images.githubusercontent.com/11698181/152662590-9976d41f-792f-4fe2-a4d0-b630768d2c6d.png)
+![image](https://user-images.githubusercontent.com/11698181/152662594-982aae8b-38b4-40a5-818f-4b70bbad0825.png)
 
