@@ -81,6 +81,7 @@ private:
     sensor_msgs::Imu message_imu_;
     nav_msgs::Odometry message_odom_;
     std::ofstream output_stream_; 
+    std::ofstream output_stream2_; 
 };
 
 }  // namespace generator

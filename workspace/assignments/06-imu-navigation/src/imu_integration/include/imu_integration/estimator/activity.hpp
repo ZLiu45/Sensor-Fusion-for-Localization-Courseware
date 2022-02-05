@@ -98,7 +98,7 @@ class Activity {
     void UpdatePosition(const double &delta_t, const Eigen::Vector3d &velocity_delta);
 
     void WritePoseToFile(); 
-    
+
   private:
     // node handler:
     ros::NodeHandle private_nh_;
@@ -133,6 +133,7 @@ class Activity {
 
     std::string integration_method_; 
     std::ofstream output_stream_;
+    std::ofstream output_stream2_;
 };
 
 } // namespace estimator

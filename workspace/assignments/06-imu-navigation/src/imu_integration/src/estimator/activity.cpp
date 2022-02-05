@@ -4,7 +4,8 @@
  * @Date: 2020-11-10 14:25:03
  */
 #include <cmath>
-#include <fstream> 
+#include <fstream>
+#include <iomanip> 
 
 #include "glog/logging.h"
 #include "imu_integration/estimator/activity.hpp"
@@ -21,13 +22,15 @@ Activity::Activity(void)
       // angular velocity bias:
       angular_vel_bias_(0.0, 0.0, 0.0),
       // linear acceleration bias:
-      linear_acc_bias_(0.0, 0.0, 0.0), 
-      integration_method_("mid_point") {
-          std::string output_file = "/workspace/assignments/06-imu-navigation/" + integration_method_ + ".txt";
-          std::cout << output_file << std::endl; 
-          output_stream_.open(output_file, std::ofstream::out | std::ofstream::trunc);
-          std::cout << "output file is open: " << output_stream_.is_open() << std::endl;
-      }
+      linear_acc_bias_(0.0, 0.0, 0.0), integration_method_("mid_point") {
+  std::string output_file = "/workspace/assignments/06-imu-navigation/" +
+                            integration_method_ + ".txt";
+  std::string output_file2 = "/workspace/assignments/06-imu-navigation/timestamp_" +
+                             integration_method_ + ".txt";
+
+  output_stream_.open(output_file, std::ofstream::out | std::ofstream::trunc);
+  output_stream2_.open(output_file2, std::ofstream::out | std::ofstream::trunc);
+}
 
 void Activity::Init(void) {
   // parse IMU config:
@@ -89,7 +92,7 @@ bool Activity::Run(void) {
   while (HasData()) {
     if (UpdatePose()) {
       PublishPose();
-      WritePoseToFile(); 
+      WritePoseToFile();
     }
   }
 
@@ -149,7 +152,7 @@ bool Activity::UpdatePose(void) {
       size_t prev_index = 0;
       size_t curr_index = 1;
       Eigen::Vector3d angular_delta;
-      if (!GetAngularDelta(1, 0, angular_delta)) {
+      if (!GetAngularDelta(curr_index, prev_index, angular_delta)) {
         return false;
       }
       Eigen::Matrix3d R_prev = pose_.block<3, 3>(0, 0);
@@ -159,10 +162,10 @@ bool Activity::UpdatePose(void) {
       Eigen::Quaterniond curr_q(R_curr);
       Eigen::Vector3d vel_delta;
       double delta_t;
-      if (!GetVelocityDelta(1, 0, R_curr, R_prev, delta_t, vel_delta)) {
+      if (!GetVelocityDelta(curr_index, prev_index, R_curr, R_prev, delta_t,
+                            vel_delta)) {
         return false;
       }
-
 
       UpdatePosition(delta_t, vel_delta);
       imu_data_buff_.pop_front();
@@ -185,6 +188,7 @@ bool Activity::UpdatePose(void) {
 bool Activity::PublishPose() {
   // a. set header:
   message_odom_.header.stamp = ros::Time::now();
+  std::cout << std::setw(18) << std::setprecision(12) << message_odom_.header.stamp.toSec() << std::endl; 
   message_odom_.header.frame_id = odom_config_.frame_id;
 
   // b. set child frame id:
@@ -355,10 +359,12 @@ void Activity::UpdatePosition(const double &delta_t,
 
 void Activity::WritePoseToFile() {
   if (output_stream_.is_open()) {
-    output_stream_ << pose_(0, 0) << " " << pose_(0, 1) << " " << pose_(0, 2) << " "
-         << pose_(0, 3) << " " << pose_(1, 0) << " " << pose_(1, 1) << " "
-         << pose_(1, 2) << " " << pose_(1, 3) << " " << pose_(2, 0) << " "
-         << pose_(2, 1) << " " << pose_(2, 2) << " " << pose_(2, 3) << "\n";
+    output_stream_ << pose_(0, 0) << " " << pose_(0, 1) << " " << pose_(0, 2)
+                   << " " << pose_(0, 3) << " " << pose_(1, 0) << " "
+                   << pose_(1, 1) << " " << pose_(1, 2) << " " << pose_(1, 3)
+                   << " " << pose_(2, 0) << " " << pose_(2, 1) << " "
+                   << pose_(2, 2) << " " << pose_(2, 3) << "\n";
+    output_stream2_ << std::setw(18) << std::setprecision(12) << message_odom_.header.stamp.toSec() << "\n";
   }
 }
 } // namespace estimator
