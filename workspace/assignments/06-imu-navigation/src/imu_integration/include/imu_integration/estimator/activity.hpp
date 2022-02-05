@@ -97,6 +97,8 @@ class Activity {
      */
     void UpdatePosition(const double &delta_t, const Eigen::Vector3d &velocity_delta);
 
+    void WritePoseToFile(); 
+    
   private:
     // node handler:
     ros::NodeHandle private_nh_;
@@ -128,6 +130,9 @@ class Activity {
     Eigen::Vector3d vel_ = Eigen::Vector3d::Zero();
 
     nav_msgs::Odometry message_odom_;
+
+    std::string integration_method_; 
+    std::ofstream output_stream_;
 };
 
 } // namespace estimator

@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     // 100 Hz:
     ros::Rate loop_rate(100);
     while (ros::ok())
-    {
+    {   
         ros::spinOnce();
 
         activity.Run();

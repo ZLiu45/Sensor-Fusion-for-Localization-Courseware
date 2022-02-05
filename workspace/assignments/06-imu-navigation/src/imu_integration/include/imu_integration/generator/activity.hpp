@@ -9,6 +9,8 @@
 #include <random>
 #include <string>
 
+#include <fstream> 
+
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
@@ -40,6 +42,7 @@ private:
     // publish:
     void PublishMessages(void);
 
+    void WritePoseToFile();
     // utilities:
     Eigen::Vector3d GetGaussianNoise(double stddev);
     static Eigen::Matrix3d EulerAnglesToRotation(const Eigen::Vector3d &euler_angles);
@@ -77,6 +80,7 @@ private:
     // ROS IMU message:
     sensor_msgs::Imu message_imu_;
     nav_msgs::Odometry message_odom_;
+    std::ofstream output_stream_; 
 };
 
 }  // namespace generator
