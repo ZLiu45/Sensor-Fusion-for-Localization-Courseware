@@ -90,3 +90,7 @@ if (integration_method_ == "euler") {
 ![image](https://user-images.githubusercontent.com/11698181/152672038-12e6e5dd-130e-4991-a4dc-63a36c9fe82d.png)
 ![image](https://user-images.githubusercontent.com/11698181/152672044-bd85aabf-88d0-411a-ae25-8ee64c8b9b8b.png)
 
+### 总结
+1. 中值法普遍比欧拉法积分更加精确。
+2. 欧拉法在快速转弯和加减速时会产生更大误差。 
+3. IMU 本身的精度和校准非常重要，一旦IMU自身精确度很低时，这些积分法都会产生很大误差， garbage in, garbage out. 
