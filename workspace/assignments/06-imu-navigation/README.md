@@ -83,6 +83,10 @@ if (integration_method_ == "euler") {
 
 ### 使用低精度的IMU
 #### 中值法
-
+![image](https://user-images.githubusercontent.com/11698181/152672328-fda8e4f7-afa3-4878-bf30-d150ba9cc9bb.png)
+![image](https://user-images.githubusercontent.com/11698181/152672335-26e88fe3-e4e9-4120-8f7c-ac40f7b53434.png)
 
 #### 欧拉法 
+![image](https://user-images.githubusercontent.com/11698181/152672038-12e6e5dd-130e-4991-a4dc-63a36c9fe82d.png)
+![image](https://user-images.githubusercontent.com/11698181/152672044-bd85aabf-88d0-411a-ae25-8ee64c8b9b8b.png)
+
