@@ -151,6 +151,8 @@ bool Activity::UpdatePose(void) {
     while (imu_data_buff_.size() > 1) {
       size_t prev_index = 0;
       size_t curr_index = 1;
+      
+
       Eigen::Vector3d angular_delta;
       if (!GetAngularDelta(curr_index, prev_index, angular_delta)) {
         return false;
@@ -267,6 +269,10 @@ bool Activity::GetAngularDelta(const size_t index_curr, const size_t index_prev,
 
   angular_delta = 0.5 * delta_t * (angular_vel_curr + angular_vel_prev);
 
+  if (integration_method_ == "euler") {
+      angular_delta = delta_t * angular_vel_curr;  
+  }
+
   return true;
 }
 
@@ -302,6 +308,9 @@ bool Activity::GetVelocityDelta(const size_t index_curr,
       GetUnbiasedLinearAcc(imu_data_prev.linear_acceleration, R_prev);
 
   velocity_delta = 0.5 * delta_t * (linear_acc_curr + linear_acc_prev);
+  if (integration_method_ == "euler") {
+      velocity_delta = delta_t * linear_acc_curr;
+  }
 
   return true;
 }

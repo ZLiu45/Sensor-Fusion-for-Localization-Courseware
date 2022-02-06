@@ -9,20 +9,22 @@ import rosbag
 import math
 import numpy as np
 
+from pprint import pprint
+
 from gnss_ins_sim.sim import imu_model
 from gnss_ins_sim.sim import ins_sim
 
 from std_msgs.msg import String
 from sensor_msgs.msg import Imu
+from sensor_msgs.msg import NavSatFix
 from nav_msgs.msg import Odometry
 
+
 def get_gnss_ins_sim(motion_def_file, fs_imu, fs_gps):
-    '''
-    Generate simulated GNSS/IMU data using specified trajectory.
-    '''
+
     # set IMU model:
     D2R = math.pi/180.0
-    # imu_err = 'low-accuracy'
+    # # imu_err = 'low-accuracy'
     imu_err = {
         # 1. gyro:
         # a. random noise:
@@ -49,57 +51,69 @@ def get_gnss_ins_sim(motion_def_file, fs_imu, fs_gps):
         'accel_k': np.array([1.0, 1.0, 1.0]),
         'accel_s': np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
         # 3. mag:
-        'mag_si': np.eye(3) + np.random.randn(3, 3)*0.0, 
+        'mag_si': np.eye(3) + np.random.randn(3, 3)*0.0,
         'mag_hi': np.array([10.0, 10.0, 10.0])*0.0,
         'mag_std': np.array([0.1, 0.1, 0.1])
     }
-    # generate GPS and magnetometer data:
+    # # generate GPS and magnetometer data:
     imu = imu_model.IMU(accuracy=imu_err, axis=9, gps=True)
-
-    # init simulation:
+    print("create imu model")
+    # # init simulation:
     sim = ins_sim.Sim(
         [fs_imu, fs_gps, fs_imu],
         motion_def_file,
-        ref_frame=1,
+        ref_frame=0,
         imu=imu,
         mode=None,
         env=None,
         algorithm=None
     )
-    
+
     # run:
     sim.run(1)
+    print("run sim")
+    pprint(vars(sim.results))
+    pprint(vars(sim.dmgr.ref_pos))
+    pprint(vars(sim.dmgr.ref_odo))
 
-    # get simulated data:
-    rospy.logwarn(
-        "Simulated data size {}".format(
-            len(sim.dmgr.get_data_all('gyro').data[0])
-        )
-    )
 
-    # imu measurements:
-    step_size = 1.0 / fs_imu
-    for i, (gyro, accel) in enumerate(
-        zip(
-            # a. gyro
-            sim.dmgr.get_data_all('gyro').data[0], 
-            # b. accel
-            sim.dmgr.get_data_all('accel').data[0]
-        )
-    ):
-        yield {
-            'stamp': i * step_size,
-            'data': {
-                # a. gyro:
-                'gyro_x': gyro[0],
-                'gyro_y': gyro[1],
-                'gyro_z': gyro[2],
-                # b. accel:
-                'accel_x': accel[0],
-                'accel_y': accel[1],
-                'accel_z': accel[2]
-            }
-        }
+    # # get simulated data:
+    # rospy.logwarn(
+    #     "Simulated data size {}".format(
+    #         len(sim.dmgr.get_data_all('gyro').data[0])
+    #     )
+    # )
+
+    # print(sim.dmgr)
+    # # imu measurements:
+    # step_size = 1.0 / fs_imu
+    # for i, (gyro, accel, ref_gps) in enumerate(
+    #     zip(
+    #         # a. gyro
+    #         sim.dmgr.get_data_all('gyro').data[0],
+    #         # b. accel
+    #         sim.dmgr.get_data_all('accel').data[0],
+    #         # c. ref position
+    #         sim.dmgr.get_data_all('ref_pos').data[0],
+    #     )
+    # ):
+    #     yield {
+    #         'stamp': i * step_size,
+    #         'data': {
+    #             # a. gyro:
+    #             'gyro_x': gyro[0],
+    #             'gyro_y': gyro[1],
+    #             'gyro_z': gyro[2],
+    #             # b. accel:
+    #             'accel_x': accel[0],
+    #             'accel_y': accel[1],
+    #             'accel_z': accel[2],
+    #             # c. position:
+    #             'lat': ref_gps[0],
+    #             'lon': ref_gps[1],
+    #             'alt': ref_gps[2],
+    #         }
+    #     }
 
 
 def gnss_ins_sim_recorder():
@@ -107,59 +121,70 @@ def gnss_ins_sim_recorder():
     Record simulated GNSS/IMU data as ROS bag
     """
     # ensure gnss_ins_sim_node is unique:
-    rospy.init_node('gnss_ins_sim_recorder_node')
+    # rospy.init_node('gnss_ins_sim_recorder_node')
 
-    # parse params:
-    motion_def_name = rospy.get_param('/gnss_ins_sim_recorder_node/motion_file')
-    sample_freq_imu = rospy.get_param('/gnss_ins_sim_recorder_node/sample_frequency/imu')
-    sample_freq_gps = rospy.get_param('/gnss_ins_sim_recorder_node/sample_frequency/gps')
-    topic_name_imu = rospy.get_param('/gnss_ins_sim_recorder_node/topic_name')
-    rosbag_output_path = rospy.get_param('/gnss_ins_sim_recorder_node/output_path')
-    rosbag_output_name = rospy.get_param('/gnss_ins_sim_recorder_node/output_name')
+    # # parse params:
+    # motion_def_name = rospy.get_param(
+    #     '/gnss_ins_sim_recorder_node/motion_file')
+    # sample_freq_imu = rospy.get_param(
+    #     '/gnss_ins_sim_recorder_node/sample_frequency/imu')
+    # sample_freq_gps = rospy.get_param(
+    #     '/gnss_ins_sim_recorder_node/sample_frequency/gps')
+    # topic_name_imu = rospy.get_param('/gnss_ins_sim_recorder_node/topic_name')
+    # rosbag_output_path = rospy.get_param(
+    #     '/gnss_ins_sim_recorder_node/output_path')
+    # rosbag_output_name = rospy.get_param(
+    #     '/gnss_ins_sim_recorder_node/output_name')
 
     # generate simulated data:
+    # motion_def_path = os.path.join(
+    #     rospkg.RosPack().get_path('gnss_ins_sim'), 'config', 'motion_def', motion_def_name
+    # )
+
     motion_def_path = os.path.join(
-        rospkg.RosPack().get_path('gnss_ins_sim'), 'config', 'motion_def', motion_def_name
-    )
-    imu_simulator = get_gnss_ins_sim(
-        # motion def file:
-        motion_def_path,
-        # gyro-accel/gyro-accel-mag sample rate:
-        sample_freq_imu,
-        # GPS sample rate:
-        sample_freq_gps
-    )
+        "/workspace/assignments/06-imu-navigation/src/gnss_ins_sim/config/motion_def", "allan_variance_analysis.csv")
+    print("before simulator")
+    get_gnss_ins_sim(motion_def_path, 100, 10)
+    print("after simulator")
 
-    with rosbag.Bag(
-        os.path.join(rosbag_output_path, rosbag_output_name), 'w'
-    ) as bag:
-        # get timestamp base:
-        timestamp_start = rospy.Time.now()
+    # with rosbag.Bag(
+    #     os.path.join(rosbag_output_path, rosbag_output_name), 'w'
+    # ) as bag:
+    #     # get timestamp base:
+    #     timestamp_start = rospy.Time.now()
 
-        for measurement in imu_simulator:
-            # init:
-            msg = Imu()
-            # a. set header:
-            msg.header.frame_id = 'NED'
-            msg.header.stamp = timestamp_start + rospy.Duration.from_sec(measurement['stamp'])
-            # b. set orientation estimation:
-            msg.orientation.x = 0.0
-            msg.orientation.y = 0.0
-            msg.orientation.z = 0.0
-            msg.orientation.w = 1.0
-            # c. gyro:
-            msg.angular_velocity.x = measurement['data']['gyro_x']
-            msg.angular_velocity.y = measurement['data']['gyro_y']
-            msg.angular_velocity.z = measurement['data']['gyro_z']
-            msg.linear_acceleration.x = measurement['data']['accel_x']
-            msg.linear_acceleration.y = measurement['data']['accel_y']
-            msg.linear_acceleration.z = measurement['data']['accel_z']
+    #     for measurement in imu_simulator:
+    #         # init:
+    #         msg = Imu()
+    #         # a. set header:
+    #         msg.header.frame_id = 'ORI'
+    #         msg.header.stamp = timestamp_start + rospy.Duration.from_sec(measurement['stamp'])
+    #         # b. set orientation estimation:
+    #         msg.orientation.x = 0.0
+    #         msg.orientation.y = 0.0
+    #         msg.orientation.z = 0.0
+    #         msg.orientation.w = 1.0
+    #         # c. gyro:
+    #         msg.angular_velocity.x = measurement['data']['gyro_x']
+    #         msg.angular_velocity.y = measurement['data']['gyro_y']
+    #         msg.angular_velocity.z = measurement['data']['gyro_z']
+    #         msg.linear_acceleration.x = measurement['data']['accel_x']
+    #         msg.linear_acceleration.y = measurement['data']['accel_y']
+    #         msg.linear_acceleration.z = measurement['data']['accel_z']
+    #         # write:
+    #         bag.write(topic_name_imu, msg, msg.header.stamp)
 
-            # write:
-            bag.write(topic_name_imu, msg, msg.header.stamp)
+    #         ## gps message
+    #         gps_msg = NavSatFix()
+    #         gps_msg.header.frame_id = "WORLD"
+    #         gps_msg.header.stamp = timestamp_start + rospy.Duration.from_sec(measurement['stamp'])
+    #         gps_msg.latitude = measurement['data']['lat']
+    #         gps_msg.longitude = measurement['data']['lon']
+    #         gps_msg.altitude = measurement['data']['alt']
+    #         bag.write("/gps_pose", gps_msg, gps_msg.header.stamp)
+
 
 if __name__ == '__main__':
-    try:
-        gnss_ins_sim_recorder()
-    except rospy.ROSInterruptException:
-        pass
+    print("abc")
+
+    gnss_ins_sim_recorder()
