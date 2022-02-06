@@ -88,7 +88,7 @@ void Activity::Init(void) {
 bool Activity::Run(void) {
   if (!ReadData())
     return false;
-
+  
   while (HasData()) {
     if (UpdatePose()) {
       PublishPose();
@@ -107,10 +107,10 @@ bool Activity::ReadData(void) {
     return false;
 
   if (!initialized_) {
-    odom_ground_truth_sub_ptr->ParseData(odom_data_buff_);
+    // odom_ground_truth_sub_ptr->ParseData(odom_data_buff_);
 
-    if (static_cast<size_t>(0) == odom_data_buff_.size())
-      return false;
+    // if (static_cast<size_t>(0) == odom_data_buff_.size())
+    //   return false;
   }
 
   return true;
@@ -120,25 +120,25 @@ bool Activity::HasData(void) {
   if (imu_data_buff_.size() < static_cast<size_t>(2))
     return false;
 
-  if (!initialized_ && static_cast<size_t>(0) == odom_data_buff_.size()) {
-    return false;
-  }
-
+//   if (!initialized_ && static_cast<size_t>(0) == odom_data_buff_.size()) {
+//     return false;
+//   }
+  
   return true;
 }
 
 bool Activity::UpdatePose(void) {
   if (!initialized_) {
     // use the latest measurement for initialization:
-    OdomData &odom_data = odom_data_buff_.back();
+    // OdomData &odom_data = odom_data_buff_.back();
     IMUData imu_data = imu_data_buff_.back();
 
-    pose_ = odom_data.pose;
-    vel_ = odom_data.vel;
+    // pose_ = odom_data.pose;
+    // vel_ = odom_data.vel;    
 
     initialized_ = true;
 
-    odom_data_buff_.clear();
+    // odom_data_buff_.clear();
     imu_data_buff_.clear();
 
     // keep the latest IMU measurement for mid-value integration:
