@@ -132,8 +132,8 @@ private:
    * @param  R, corresponding orientation of measurement
    * @return unbiased angular velocity in body frame
    */
-  Eigen::Vector3d GetUnbiasedAngularVel(const Eigen::Vector3d &angular_vel,
-                                        const Eigen::Matrix3d &R);
+  Eigen::Vector3d GetUnbiasedAngularVel(const Eigen::Vector3d &angular_vel);
+                                        // const Eigen::Matrix3d &R);
   /**
    * @brief  get unbiased linear acceleration in navigation frame
    * @param  linear_acc, linear acceleration measurement
