@@ -437,15 +437,16 @@ bool ErrorStateKalmanFilter::GetVelocityDelta(
   Eigen::Vector3d linear_acc_curr = Eigen::Vector3d(
       imu_data_curr.linear_acceleration.x, imu_data_curr.linear_acceleration.y,
       imu_data_curr.linear_acceleration.z);
-  // linear_acc_curr = GetUnbiasedLinearAcc(linear_acc_curr, R_curr);
+
   Eigen::Vector3d linear_acc_prev = Eigen::Vector3d(
       imu_data_prev.linear_acceleration.x, imu_data_prev.linear_acceleration.y,
       imu_data_prev.linear_acceleration.z);
-  // linear_acc_prev = GetUnbiasedLinearAcc(linear_acc_prev, R_prev);
 
   // mid-value acc can improve error state prediction accuracy:
   linear_acc_mid = 0.5 * (linear_acc_curr + linear_acc_prev) - accl_bias_;
-  velocity_delta = T * linear_acc_mid;
+  velocity_delta = T * 0.5 *
+                   (GetUnbiasedLinearAcc(linear_acc_curr, R_curr) +
+                    GetUnbiasedLinearAcc(linear_acc_prev, R_prev));
 
   return true;
 }
@@ -555,13 +556,13 @@ void ErrorStateKalmanFilter::UpdateErrorEstimation(
   double sqrt_t = std::sqrt(T);
   B_k.block<3, 3>(kIndexErrorVel, kIndexNoiseAccel) *= T;
   B_k.block<3, 3>(kIndexErrorOri, kIndexNoiseGyro) *= T;
-  B_k.block<3, 3>(kIndexErrorAccel, kIndexNoiseBiasAccel) *= sqrt_t;
-  B_k.block<3, 3>(kIndexErrorGyro, kIndexNoiseBiasGyro) *= sqrt_t;
+  B_k.block<3, 3>(kIndexErrorAccel, kIndexNoiseBiasAccel) *= 0;
+  B_k.block<3, 3>(kIndexErrorGyro, kIndexNoiseBiasGyro) *= 0;
   // TODO: perform Kalman prediction
   X_ = F_k * X_;
-  LOG(INFO) << "error state: " << X_.transpose();
   P_ = F_k * P_ * F_k.transpose() + B_k * Q_ * B_k.transpose();
-  LOG(INFO) << "P_: \n" << P_;
+  // LOG(INFO) << "error state: " << X_.transpose();
+  // LOG(INFO) << "P_: \n" << P_;
 }
 
 /**
@@ -608,8 +609,10 @@ void ErrorStateKalmanFilter::CorrectErrorEstimation(
   }
 
   // TODO: perform Kalman correct:
+  // LOG(INFO) << "K: \n" << K;
   P_ = ((MatrixP::Identity() - K * G) * P_).eval();
-  X_ = X_ + K * (YPose_ - Y);
+  const VectorYPose deltaY = YPose_ - Y;
+  X_ = X_ + K * deltaY;
 }
 
 /**
@@ -636,18 +639,13 @@ void ErrorStateKalmanFilter::EliminateError(void) {
   pose_.block<3, 3>(0, 0) = curr_q.toRotationMatrix();
 
   // d. gyro bias:
-  if (IsCovStable(kIndexErrorGyro)) {
-    for (int i = 0; i < 3; ++i) {
-      LOG(INFO) << P_(kIndexErrorGyro + i, kIndexErrorGyro + i);
-    }
-    gyro_bias_ -= X_.block<3, 1>(kIndexErrorGyro, 0);
-    LOG(INFO) << "gyro bias: " << gyro_bias_.transpose();
-  }
+  // if (IsCovStable(kIndexErrorGyro)) {
+  gyro_bias_ -= X_.block<3, 1>(kIndexErrorGyro, 0);
 
   // e. accel bias:
-  if (IsCovStable(kIndexErrorAccel)) {
-    accl_bias_ -= X_.block<3, 1>(kIndexErrorAccel, 0);
-  }
+  // if (IsCovStable(kIndexErrorAccel)) {
+  accl_bias_ -= X_.block<3, 1>(kIndexErrorAccel, 0);
+  // }
 }
 
 /**

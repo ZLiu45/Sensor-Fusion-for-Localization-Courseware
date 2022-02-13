@@ -15,7 +15,7 @@ bool FileManager::CreateFile(std::ofstream& ofs, std::string file_path) {
 
     ofs.open(file_path.c_str(), std::ios::out);
     if (!ofs) {
-        LOG(WARNING) << "无法生成文件: " << std::endl << file_path << std::endl << std::endl;
+        LOG(WARNING) << "unable to generate file: " << std::endl << file_path << std::endl << std::endl;
         return false;
     }
 

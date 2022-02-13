@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   ros::ServiceServer service =
       nh.advertiseService("save_odometry", SaveOdometryCB);
 
-  ros::Rate rate(100);
+  ros::Rate rate(200);
   while (ros::ok()) {
     ros::spinOnce();
 
@@ -50,6 +50,8 @@ int main(int argc, char *argv[]) {
 
     rate.sleep();
   }
+  kitti_filtering_flow_ptr->SaveOdometry();
+
 
   return 0;
 }

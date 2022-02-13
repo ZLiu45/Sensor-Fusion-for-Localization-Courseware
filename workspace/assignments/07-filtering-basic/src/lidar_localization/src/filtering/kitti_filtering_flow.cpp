@@ -122,8 +122,8 @@ bool KITTIFilteringFlow::SaveOdometry(void) {
                                    "/slam_data/trajectory/ground_truth.txt")) {
     return false;
   }
-
   // write outputs:
+  LOG(INFO) << "trajectory N: " << trajectory.N;
   for (size_t i = 0; i < trajectory.N; ++i) {
     // sync ref pose with gnss measurement:
     while (!gnss_data_buff_.empty() &&
@@ -142,10 +142,10 @@ bool KITTIFilteringFlow::SaveOdometry(void) {
     const Eigen::Vector3f &position_lidar =
         trajectory.lidar_.at(i).block<3, 1>(0, 3);
 
-    if ((position_ref - position_lidar).norm() > 3.0) {
-      continue;
-    }
-
+    // if ((position_ref - position_lidar).norm() > 3.0) {
+    //   continue;
+    // }
+    LOG(INFO) << "save poses: " << i;
     SavePose(trajectory.fused_.at(i), fused_odom_ofs);
     SavePose(trajectory.lidar_.at(i), laser_odom_ofs);
     SavePose(current_gnss_data_.pose, ref_odom_ofs);
@@ -272,7 +272,6 @@ bool KITTIFilteringFlow::CorrectLocalization() {
       filtering_ptr_->Correct(current_imu_synced_data_, current_cloud_data_,
                               current_pos_vel_data_, laser_pose_);
   PublishLidarOdom();
-
   if (is_fusion_succeeded) {
     PublishFusionOdom();
 
