@@ -203,6 +203,11 @@ void ErrorStateKalmanFilter::UpdateErrorEstimation(
   X_ = F_k * X_;
   P_ = F_k * P_ * F_k.transpose() + B_k * Q_ * B_k.transpose(); }
 ```
+Without IMU bias update, the fused result is worse than the previous one in terms of maximum error and std. But the overall performance was not impact too much in terms of mean and rmse. This is because the imu propagation was only used for a short segment so most of the cases, laser alignment can cover the errors from the IMU biases. However, under some hard cases, the bias will have a large impact, which will cause a large error. 
+##### laser: 
+![image](https://user-images.githubusercontent.com/11698181/153747026-96ee76fb-7503-4062-91e6-61e8ded5e29e.png)
+##### fusion 
+![image](https://user-images.githubusercontent.com/11698181/153747038-89e92f3c-1a58-47db-94ba-227fcba88f6c.png)
 
 ### 不同噪声设置情况下的结果对比
 
