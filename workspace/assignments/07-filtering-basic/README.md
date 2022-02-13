@@ -161,17 +161,17 @@ Result:
 ### 调试参数
 #### Before tuning parameters: 
 comparing ground_truth vs laser.txt vs Comparing ground_truth vs fused: 
-using laser: 
+##### using laser: 
 ![image](https://user-images.githubusercontent.com/11698181/153746111-3ec04de5-a8fa-4592-83c8-eb71fb557424.png)
-using fused: 
+##### using fused: 
 ![image](https://user-images.githubusercontent.com/11698181/153746122-a900d334-4c26-4858-9084-66862255667e.png)
 
 #### fused data is very tight vs laser data. We should increase the noise of measurements and decrease the sigma of imu process noise.
 With the help from IMU, the trajectory is much smoother and has better performance in terms of max error and min errors. 
 ![image](https://user-images.githubusercontent.com/11698181/153746535-b4e1d0f6-b2cc-4cc9-9a4f-1433a65dbbec.png)
-using laser: 
+##### using laser: 
 ![image](https://user-images.githubusercontent.com/11698181/153746575-63c4fc17-c2a6-4dd4-8783-7f3928c27dd7.png)
-using fused: 
+##### using fused: 
 ![image](https://user-images.githubusercontent.com/11698181/153746596-76fa6495-1099-468a-bb43-cfd7ad2a3828.png)
 
 
