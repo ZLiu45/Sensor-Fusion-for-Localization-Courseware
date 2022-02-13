@@ -155,13 +155,15 @@ void ErrorStateKalmanFilter::EliminateError(void) {
   accl_bias_ -= X_.block<3, 1>(kIndexErrorAccel, 0);
   // }
 ```
+Result: 
+![image](https://user-images.githubusercontent.com/11698181/153745043-b06038d5-9c8c-447c-aaa9-4dc60df493b7.png)
 
 ### 调试参数
-
+Before tuning parameters; 
 
 
 ### 不考虑随机游走模型时，工程实现。
-
+``` b_a_{k+1} = b_a_{k}
 
 ### 不同噪声设置情况下的结果对比
 
