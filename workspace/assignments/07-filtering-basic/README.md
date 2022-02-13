@@ -159,11 +159,47 @@ Result:
 ![image](https://user-images.githubusercontent.com/11698181/153745043-b06038d5-9c8c-447c-aaa9-4dc60df493b7.png)
 
 ### 调试参数
-Before tuning parameters; 
+Before tuning parameters: 
+comparing ground_truth vs laser.txt vs Comparing ground_truth vs fused: 
+using laser: 
+![image](https://user-images.githubusercontent.com/11698181/153746111-3ec04de5-a8fa-4592-83c8-eb71fb557424.png)
+using fused: 
+![image](https://user-images.githubusercontent.com/11698181/153746122-a900d334-4c26-4858-9084-66862255667e.png)
+
+fused data is very tight vs laser data. We should increase the noise of measurements and decrease the sigma of imu process noise.
+With the help from IMU, the trajectory is much smoother and has better performance in terms of max error and min errors. 
+![image](https://user-images.githubusercontent.com/11698181/153746535-b4e1d0f6-b2cc-4cc9-9a4f-1433a65dbbec.png)
+using laser: 
+![image](https://user-images.githubusercontent.com/11698181/153746575-63c4fc17-c2a6-4dd4-8783-7f3928c27dd7.png)
+using fused: 
+![image](https://user-images.githubusercontent.com/11698181/153746596-76fa6495-1099-468a-bb43-cfd7ad2a3828.png)
 
 
 ### 不考虑随机游走模型时，工程实现。
-``` b_a_{k+1} = b_a_{k}
+\ b_a_{k+1} = b_a_{k}
+\ b_g_{k+1} = b_g_{k}
+The bias doesn't have to update. 
+void ErrorStateKalmanFilter::UpdateErrorEstimation(
+    const double &T, const Eigen::Vector3d &linear_acc_mid,
+    const Eigen::Vector3d &angular_vel_mid) {
+  MatrixF F_1st;
+  MatrixF F_2nd;
+  // TODO: update process equation:
+  UpdateProcessEquation(linear_acc_mid, angular_vel_mid);
+  // TODO: get discretized process equations:
+  F_1st = F_ * T;
+  F_2nd = 0.5 * F_ * F_ * T * T;  // 2nd order taylor expansion
+  MatrixF F_k = MatrixF::Identity() + F_1st + F_2nd;
+  MatrixB B_k = B_;
+  double sqrt_t = std::sqrt(T);
+  B_k.block<3, 3>(kIndexErrorVel, kIndexNoiseAccel) *= T;
+  B_k.block<3, 3>(kIndexErrorOri, kIndexNoiseGyro) *= T;
+  B_k.block<3, 3>(kIndexErrorAccel, kIndexNoiseBiasAccel) *= 0;
+  B_k.block<3, 3>(kIndexErrorGyro, kIndexNoiseBiasGyro) *= 0;
+  // TODO: perform Kalman prediction
+  X_ = F_k * X_;
+  P_ = F_k * P_ * F_k.transpose() + B_k * Q_ * B_k.transpose(); }
+
 
 ### 不同噪声设置情况下的结果对比
 
