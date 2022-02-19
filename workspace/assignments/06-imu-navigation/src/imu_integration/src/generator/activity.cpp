@@ -26,9 +26,14 @@ Activity::Activity(void)
       linear_acc_bias_(0.0, 0.0, 0.0),
       output_stream_(
           "/workspace/assignments/06-imu-navigation/ground_truth.txt",
-          std::ofstream::out | std::ofstream::trunc), 
-       output_stream2_(
-          "/workspace/assignments/06-imu-navigation/timestamp.txt",
+          std::ofstream::out | std::ofstream::trunc),
+      output_stream2_("/workspace/assignments/06-imu-navigation/timestamp.txt",
+                      std::ofstream::out | std::ofstream::trunc),
+      imu_output_stream_(
+          "/workspace/assignments/06-imu-navigation/imu_output.txt",
+          std::ofstream::out | std::ofstream::trunc),
+      gt_quat_output_stream_(
+          "/workspace/assignments/06-imu-navigation/gt_quat_output.txt",
           std::ofstream::out | std::ofstream::trunc) {}
 
 void Activity::Init(void) {
@@ -99,7 +104,6 @@ void Activity::Run(void) {
   ros::Time timestamp = ros::Time::now();
   double delta_t = timestamp.toSec() - timestamp_.toSec();
   timestamp_ = timestamp;
-  std::cout << "delta t: " << delta_t << std::endl; 
 
   // get ground truth from motion equation:
   GetGroundTruth();
@@ -280,10 +284,36 @@ void Activity::WritePoseToFile() {
                    << R_gt_(1, 1) << " " << R_gt_(1, 2) << " " << t_gt_(1)
                    << " " << R_gt_(2, 0) << " " << R_gt_(2, 1) << " "
                    << R_gt_(2, 2) << " " << t_gt_(2) << "\n";
-    output_stream2_ << std::setw(18) << std::setprecision(12) << message_odom_.header.stamp.toSec() << "\n";
+  }
+  if (output_stream2_.is_open()) {
+    output_stream2_ << std::setw(18) << std::setprecision(12)
+                    << message_odom_.header.stamp.toSec() << "\n";
+  }
+
+  if (imu_output_stream_.is_open()) {
+    imu_output_stream_ << std::setw(24) << std::setprecision(18)
+                       << message_odom_.header.stamp.toSec() << " "
+                       << message_imu_.angular_velocity.x << " "
+                       << message_imu_.angular_velocity.y << " "
+                       << message_imu_.angular_velocity.z << " "
+                       << message_imu_.linear_acceleration.x << " "
+                       << message_imu_.linear_acceleration.y << " "
+                       << message_imu_.linear_acceleration.z << "\n";
+  }
+  if (gt_quat_output_stream_.is_open()) {
+    gt_quat_output_stream_ << std::setw(24) << std::setprecision(18)
+                           << message_odom_.header.stamp.toSec() << " "
+                           << message_odom_.pose.pose.orientation.x << " "
+                           << message_odom_.pose.pose.orientation.y << " "
+                           << message_odom_.pose.pose.orientation.z << " "
+                           << message_odom_.pose.pose.orientation.w << " "
+                           << message_odom_.pose.pose.position.x << " "
+                           << message_odom_.pose.pose.position.y << " "
+                           << message_odom_.pose.pose.position.z << " "
+                           << message_odom_.twist.twist.linear.x << " "
+                           << message_odom_.twist.twist.linear.y << " "
+                           << message_odom_.twist.twist.linear.z << "\n";
   }
 }
-
 } // namespace generator
-
 } // namespace imu_integration

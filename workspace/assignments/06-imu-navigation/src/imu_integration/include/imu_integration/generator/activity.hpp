@@ -82,6 +82,8 @@ private:
     nav_msgs::Odometry message_odom_;
     std::ofstream output_stream_; 
     std::ofstream output_stream2_; 
+    std::ofstream imu_output_stream_; 
+    std::ofstream gt_quat_output_stream_;
 };
 
 }  // namespace generator

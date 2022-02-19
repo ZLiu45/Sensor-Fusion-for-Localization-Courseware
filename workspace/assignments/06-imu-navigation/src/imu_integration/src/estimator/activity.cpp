@@ -107,10 +107,10 @@ bool Activity::ReadData(void) {
     return false;
 
   if (!initialized_) {
-    // odom_ground_truth_sub_ptr->ParseData(odom_data_buff_);
+    odom_ground_truth_sub_ptr->ParseData(odom_data_buff_);
 
-    // if (static_cast<size_t>(0) == odom_data_buff_.size())
-    //   return false;
+    if (static_cast<size_t>(0) == odom_data_buff_.size())
+      return false;
   }
 
   return true;
@@ -120,9 +120,9 @@ bool Activity::HasData(void) {
   if (imu_data_buff_.size() < static_cast<size_t>(2))
     return false;
 
-//   if (!initialized_ && static_cast<size_t>(0) == odom_data_buff_.size()) {
-//     return false;
-//   }
+  if (!initialized_ && static_cast<size_t>(0) == odom_data_buff_.size()) {
+    return false;
+  }
   
   return true;
 }
@@ -130,15 +130,15 @@ bool Activity::HasData(void) {
 bool Activity::UpdatePose(void) {
   if (!initialized_) {
     // use the latest measurement for initialization:
-    // OdomData &odom_data = odom_data_buff_.back();
+    OdomData &odom_data = odom_data_buff_.back();
     IMUData imu_data = imu_data_buff_.back();
 
-    // pose_ = odom_data.pose;
-    // vel_ = odom_data.vel;    
+    pose_ = odom_data.pose;
+    vel_ = odom_data.vel;    
 
     initialized_ = true;
 
-    // odom_data_buff_.clear();
+    odom_data_buff_.clear();
     imu_data_buff_.clear();
 
     // keep the latest IMU measurement for mid-value integration:
@@ -172,16 +172,6 @@ bool Activity::UpdatePose(void) {
       UpdatePosition(delta_t, vel_delta);
       imu_data_buff_.pop_front();
     }
-
-    // update orientation:
-
-    // get velocity delta:
-
-    // update position:
-
-    // move forward --
-    // NOTE: this is NOT fixed. you should update your buffer according to the
-    // method of your choice: imu_data_buff_.pop_front();
   }
 
   return true;
