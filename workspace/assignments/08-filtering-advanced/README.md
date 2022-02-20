@@ -18,8 +18,77 @@
 ---
 
 ### 新模型代码实现：
+1. correctErrorStateEstimation()
+```
+  switch (measurement_type) {
+  case MeasurementType::POSE: {
+    CorrectErrorEstimationPose(measurement.T_nb, Y, G, K);
+    P_ = ((MatrixP::Identity() - K * G) * P_).eval();
+    const VectorYPose deltaY = YPose_ - Y;
+    X_ = X_ + K * deltaY;
+    break;
+  }
+  case MeasurementType::POSE_VEL: {
+    // TODO: register new correction logic here:
+    CorrectErrorEstimationPoseVel(measurement.T_nb, measurement.v_b,
+                                  measurement.w_b, Y, G, K);
+    P_ = ((MatrixP::Identity() - K * G) * P_).eval();
+    const VectorYPoseVel deltaY = YPoseVel_ - Y;
+    X_ = X_ + K * deltaY;
+    break;
+  }
+```
+2. CorrectErrorEstimationPoseVel()
+```
+void ErrorStateKalmanFilter::CorrectErrorEstimationPoseVel(
+    const Eigen::Matrix4d &T_nb, const Eigen::Vector3d &v_b,
+    const Eigen::Vector3d &w_b, Eigen::VectorXd &Y, Eigen::MatrixXd &G,
+    Eigen::MatrixXd &K) {
+  //
+  Eigen::Matrix3d w_R_b = pose_.block<3, 3>(0, 0);
+  YPoseVel_.setZero();
+  YPoseVel_.head(3) = pose_.block<3, 1>(0, 3) - T_nb.block<3, 1>(0, 3);
+  YPoseVel_.segment<3>(3) = w_R_b.transpose() * vel_ - v_b;
+
+  Eigen::Matrix3d delta_R =
+      T_nb.block<3, 3>(0, 0).transpose() * pose_.block<3, 3>(0, 0);
+  YPoseVel_.tail<3>(3) =
+      Sophus::SO3d::vee(delta_R - Eigen::Matrix3d::Identity());
+
+  // YPoseVel_(kDimMeasurementPose) = 0.0;
+  // TODO: set measurement equation:
+  G = GPoseVel_;
+  G.block<3, 3>(3, 3) = w_R_b.transpose();
+  G.block<3, 3>(3, 6) = skewMatrix(v_b);
+  Y = G * X_;
+  // TODO: set Kalman gain:
+  MatrixRPoseVel S = G * P_ * G.transpose() + RPoseVel_;
+  K = P_ * G.transpose() * S.inverse();
+}
+```
 
 ### 结果评价：
 #### 整体结果： 
 #### 路段截取： 
 ### 仿真实现：
+1. CorrectErrorEstimationPosiVel():
+```
+void ErrorStateKalmanFilter::CorrectErrorEstimationPosiVel(
+    const Eigen::Matrix4d &T_nb, const Eigen::Vector3d &v_b,
+    const Eigen::Vector3d &w_b, Eigen::VectorXd &Y, Eigen::MatrixXd &G,
+    Eigen::MatrixXd &K) {
+  // parse measurement:
+  Eigen::Matrix3d w_R_b = pose_.block<3, 3>(0, 0);
+  YPosiVel_.head(3) = pose_.block<3, 1>(0, 3) - T_nb.block<3, 1>(0, 3);
+  YPosiVel_.tail(3) = w_R_b.transpose() * vel_ - v_b;
+  // set measurement equation:
+  G = GPosiVel_;
+  G.block<3, 3>(3, 3) = w_R_b.transpose();
+  G.block<3, 3>(3, 6) = skewMatrix(v_b);
+  Y = G * X_;
+  // set Kalman gain:
+  MatrixRPosiVel S = G * P_ * G.transpose() + RPosiVel_;
+  K = P_ * G.transpose() * S.inverse();
+}
+```
+2. correctErrorStateEstimation():
