@@ -18,8 +18,147 @@
 ---
 
 ### 新模型代码实现：
+1. correctErrorStateEstimation()
+```
+  switch (measurement_type) {
+  case MeasurementType::POSE: {
+    CorrectErrorEstimationPose(measurement.T_nb, Y, G, K);
+    P_ = ((MatrixP::Identity() - K * G) * P_).eval();
+    const VectorYPose deltaY = YPose_ - Y;
+    X_ = X_ + K * deltaY;
+    break;
+  }
+  case MeasurementType::POSE_VEL: {
+    // TODO: register new correction logic here:
+    CorrectErrorEstimationPoseVel(measurement.T_nb, measurement.v_b,
+                                  measurement.w_b, Y, G, K);
+    P_ = ((MatrixP::Identity() - K * G) * P_).eval();
+    const VectorYPoseVel deltaY = YPoseVel_ - Y;
+    X_ = X_ + K * deltaY;
+    break;
+  }
+```
+2. CorrectErrorEstimationPoseVel()
+```
+void ErrorStateKalmanFilter::CorrectErrorEstimationPoseVel(
+    const Eigen::Matrix4d &T_nb, const Eigen::Vector3d &v_b,
+    const Eigen::Vector3d &w_b, Eigen::VectorXd &Y, Eigen::MatrixXd &G,
+    Eigen::MatrixXd &K) {
+  //
+  Eigen::Matrix3d w_R_b = pose_.block<3, 3>(0, 0);
+  YPoseVel_.setZero();
+  YPoseVel_.head(3) = pose_.block<3, 1>(0, 3) - T_nb.block<3, 1>(0, 3);
+  YPoseVel_.segment<3>(3) = w_R_b.transpose() * vel_ - Eigen::Vector3d(v_b.x(), 0.0, 0.0);
+
+  Eigen::Matrix3d delta_R =
+      T_nb.block<3, 3>(0, 0).transpose() * pose_.block<3, 3>(0, 0);
+  YPoseVel_.tail<3>(3) =
+      Sophus::SO3d::vee(delta_R - Eigen::Matrix3d::Identity());
+
+  // YPoseVel_(kDimMeasurementPose) = 0.0;
+  // TODO: set measurement equation:
+  G = GPoseVel_;
+  G.block<3, 3>(3, 3) = w_R_b.transpose();
+  G.block<3, 3>(3, 6) = skewMatrix(v_b);
+  Y = G * X_;
+  // TODO: set Kalman gain:
+  MatrixRPoseVel S = G * P_ * G.transpose() + RPoseVel_;
+  K = P_ * G.transpose() * S.inverse();
+}
+```
 
 ### 结果评价：
 #### 整体结果： 
-#### 路段截取： 
+##### Not using velocity measurement:![evo_laser_v0_0](https://user-images.githubusercontent.com/11698181/154829537-52ed68e3-4347-406f-ad4c-f91d20d62299.png)
+
+1. laser: 
+![evo_![evo_laser2](https://user-images.githubusercontent.com/11698181/154829455-62f3521d-f80a-4513-92e1-ec12e3d636d0.png)
+laser](https://user-images.githubusercontent.com/11698181/154829452-70a6a24b-794e-4b99-9fa9-de1d0d5cc6e1.png)
+```
+max: 13.22
+mean: 8.65
+median: 8.63
+min: 6.26 
+rmse: 8.67 
+```
+2. fused: 
+![evo_fused](https://user-images.githubusercontent.com/11698181/154829505-34ea58f2-a10b-4121-b2c6-d07fab1ff300.png)
+![evo_fused2](https://user-images.githubusercontent.com/11698181/154829507-59bdd035-ea03-4b9a-99e0-2164f5b976eb.png)
+```
+max: 13.03
+mean: 8.66
+median: 8.63
+min: 6.51
+rmse: 8.68 
+```
+##### using velocity measurement: 
+1. laser 
+![evo_laser_v0_0](https://user-images.githubusercontent.com/11698181/154829544-14080eee-5f6d-433a-a07a-8461f0e1f78c.png)
+![evo_laser_v0](https://user-images.githubusercontent.com/11698181/154829548-0437b41d-da57-42ec-92c9-e3129a1240e5.png)
+```
+max: 12.36
+mean: 7.81 
+median: 7.77
+min: 5.43 
+rmse: 7.83 
+```
+2. fused: 
+![evo_fused_v0_0](https://user-images.githubusercontent.com/11698181/154829582-adf2be15-3c4a-4a5b-8aad-4aabee667d16.png)
+![evo_fused_v0](https://user-images.githubusercontent.com/11698181/154829584-60054da5-de84-4a3b-bc35-0e659e7c28a0.png)
+```
+max: 12.18
+mean: 7.81
+median: 7.77
+min: 5.67
+rmse: 7.82
+```
 ### 仿真实现：
+1. CorrectErrorEstimationPosiVel():
+```
+void ErrorStateKalmanFilter::CorrectErrorEstimationPosiVel(
+    const Eigen::Matrix4d &T_nb, const Eigen::Vector3d &v_b,
+    const Eigen::Vector3d &w_b, Eigen::VectorXd &Y, Eigen::MatrixXd &G,
+    Eigen::MatrixXd &K) {
+  // parse measurement:
+  Eigen::Matrix3d w_R_b = pose_.block<3, 3>(0, 0);
+  YPosiVel_.head(3) = pose_.block<3, 1>(0, 3) - T_nb.block<3, 1>(0, 3);
+  YPosiVel_.tail(3) = w_R_b.transpose() * vel_ - v_b;
+  // set measurement equation:
+  G = GPosiVel_;
+  G.block<3, 3>(3, 3) = w_R_b.transpose();
+  G.block<3, 3>(3, 6) = skewMatrix(v_b);
+  Y = G * X_;
+  // set Kalman gain:
+  MatrixRPosiVel S = G * P_ * G.transpose() + RPosiVel_;
+  K = P_ * G.transpose() * S.inverse();
+}
+```
+2. correctErrorStateEstimation():
+```
+case MeasurementType::POSI_VEL: {
+  //
+  // TODO: register new correction logic here:
+  CorrectErrorEstimationPosiVel(measurement.T_nb, measurement.v_b,
+                                measurement.w_b, Y, G, K);
+  P_ = ((MatrixP::Identity() - K * G) * P_).eval();
+  const VectorYPosiVel deltaY = YPosiVel_ - Y;
+  // LOG(INFO)  << deltaY.transpose(); 
+  // LOG(INFO)  << X_.transpose(); 
+  X_ = X_ + K * deltaY;
+  // LOG(INFO) << X_.transpose();
+  break;
+}
+```
+#### 整体结果： 
+![image](https://user-images.githubusercontent.com/11698181/154832552-9b27316c-bddc-45b1-92ce-fb41b1bffa5d.png)
+1. GNSS VS Fused: 
+![image](https://user-images.githubusercontent.com/11698181/154832825-b5af8ba3-4358-4b2b-bf00-c4a1acd0f169.png)
+![image](https://user-images.githubusercontent.com/11698181/154832833-e3cb06d7-7505-4a74-8f65-423aa1155304.png)
+```
+max: 3.55 
+mean: 2.27 
+median: 2.30 
+min: 0.2 
+rmse: 2.38
+```
+
