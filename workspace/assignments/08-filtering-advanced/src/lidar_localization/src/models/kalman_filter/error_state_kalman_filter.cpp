@@ -634,21 +634,19 @@ void ErrorStateKalmanFilter::CorrectErrorEstimationPoseVel(
   Eigen::Matrix3d w_R_b = pose_.block<3, 3>(0, 0);
   YPoseVel_.setZero();
   YPoseVel_.head(3) = pose_.block<3, 1>(0, 3) - T_nb.block<3, 1>(0, 3);
-  YPoseVel_.segment<3>(3) = w_R_b.transpose() * vel_ - v_b;
+  YPoseVel_.segment<3>(3) =
+      w_R_b.transpose() * vel_ - Eigen::Vector3d(v_b.x(), 0.0, 0.0);
 
   Eigen::Matrix3d delta_R =
       T_nb.block<3, 3>(0, 0).transpose() * pose_.block<3, 3>(0, 0);
   YPoseVel_.tail<3>(3) =
       Sophus::SO3d::vee(delta_R - Eigen::Matrix3d::Identity());
-  LOG(INFO) << "vel in world: " << vel_.transpose();
-  LOG(INFO) << "vel in body measurement: " << v_b.transpose();
-  LOG(INFO) << "vel in body estimated: "
-            << (w_R_b.transpose() * vel_).transpose();
-  // YPoseVel_(kDimMeasurementPose) = 0.0;
+
   // TODO: set measurement equation:
   G = GPoseVel_;
   G.block<3, 3>(3, 3) = w_R_b.transpose();
   G.block<3, 3>(3, 6) = skewMatrix(v_b);
+  G.row(3).setZero();
   Y = G * X_;
   // TODO: set Kalman gain:
   MatrixRPoseVel S = G * P_ * G.transpose() + RPoseVel_;
@@ -707,16 +705,22 @@ void ErrorStateKalmanFilter::CorrectErrorEstimation(
                                   measurement.w_b, Y, G, K);
     P_ = ((MatrixP::Identity() - K * G) * P_).eval();
     const VectorYPoseVel deltaY = YPoseVel_ - Y;
-    LOG(INFO) << "delta Y: \n" << deltaY.transpose();
     X_ = X_ + K * deltaY;
     break;
   }
-  case MeasurementType::POSI_VEL:
+  case MeasurementType::POSI_VEL: {
     //
     // TODO: register new correction logic here:
-    // CorrectErrorEstimationPosiVel(measurement.T_nb, measurement.v_b,
-    //                               measurement.w_b, Y, G, K);
+    CorrectErrorEstimationPosiVel(measurement.T_nb, measurement.v_b,
+                                  measurement.w_b, Y, G, K);
+    P_ = ((MatrixP::Identity() - K * G) * P_).eval();
+    const VectorYPosiVel deltaY = YPosiVel_ - Y;
+    // LOG(INFO)  << deltaY.transpose(); 
+    // LOG(INFO)  << X_.transpose(); 
+    X_ = X_ + K * deltaY;
+    // LOG(INFO) << X_.transpose();
     break;
+  }
   default:
     break;
   }

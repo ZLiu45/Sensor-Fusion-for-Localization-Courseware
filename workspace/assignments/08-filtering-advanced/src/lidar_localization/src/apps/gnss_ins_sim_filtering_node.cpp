@@ -16,42 +16,45 @@
 
 using namespace lidar_localization;
 
-bool _need_save_odometry = false;
+bool _need_save_odometry = true;
 
-bool SaveOdometryCB(saveOdometry::Request &request, saveOdometry::Response &response) {
-    _need_save_odometry = true;
-    response.succeed = true;
-    return response.succeed;
+bool SaveOdometryCB(saveOdometry::Request &request,
+                    saveOdometry::Response &response) {
+  _need_save_odometry = true;
+  response.succeed = true;
+  return response.succeed;
 }
 
-
 int main(int argc, char *argv[]) {
-    google::InitGoogleLogging(argv[0]);
-    FLAGS_log_dir = WORK_SPACE_PATH + "/Log";
-    FLAGS_alsologtostderr = 1;
+  google::InitGoogleLogging(argv[0]);
+  FLAGS_log_dir = WORK_SPACE_PATH + "/Log";
+  FLAGS_alsologtostderr = 1;
 
-    ros::init(argc, argv, "gnss_ins_sim_filtering_node");
-    ros::NodeHandle nh;
+  ros::init(argc, argv, "gnss_ins_sim_filtering_node");
+  ros::NodeHandle nh;
 
-    std::shared_ptr<GNSSINSSimFilteringFlow> gnss_ins_sim_filtering_flow_ptr = std::make_shared<GNSSINSSimFilteringFlow>(nh);
-    ros::ServiceServer service = nh.advertiseService("save_odometry", SaveOdometryCB);
+  std::shared_ptr<GNSSINSSimFilteringFlow> gnss_ins_sim_filtering_flow_ptr =
+      std::make_shared<GNSSINSSimFilteringFlow>(nh);
+  ros::ServiceServer service =
+      nh.advertiseService("save_odometry", SaveOdometryCB);
 
-    ros::Rate rate(100);
-    while (ros::ok()) {
-        ros::spinOnce();
+  ros::Rate rate(200);
+  while (ros::ok()) {
+    ros::spinOnce();
 
-        gnss_ins_sim_filtering_flow_ptr->Run();
+    gnss_ins_sim_filtering_flow_ptr->Run();
 
-        // save odometry estimations for evo evaluation:
-        if ( _need_save_odometry && 
-             gnss_ins_sim_filtering_flow_ptr->SaveOdometry() && 
-             gnss_ins_sim_filtering_flow_ptr->SaveObservabilityAnalysis()
-        ) {
-            _need_save_odometry = false;
-        }
+    // save odometry estimations for evo evaluation:
+    // if ( _need_save_odometry &&
+    //      gnss_ins_sim_filtering_flow_ptr->SaveOdometry() &&
+    //      gnss_ins_sim_filtering_flow_ptr->SaveObservabilityAnalysis()
+    // ) {
+    //     _need_save_odometry = true;
+    // }
 
-        rate.sleep();
-    }
+    gnss_ins_sim_filtering_flow_ptr->SaveOdometry();
+    rate.sleep();
+  }
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

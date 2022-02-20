@@ -15,7 +15,7 @@
 
 using namespace lidar_localization;
 
-bool _need_save_odometry = false;
+bool _need_save_odometry = true;
 
 bool SaveOdometryCB(saveOdometry::Request &request,
                     saveOdometry::Response &response) {
@@ -37,22 +37,19 @@ int main(int argc, char *argv[]) {
   ros::ServiceServer service =
       nh.advertiseService("save_odometry", SaveOdometryCB);
 
-  _need_save_odometry = true;
-
   ros::Rate rate(200);
+  _need_save_odometry = true; 
   while (ros::ok()) {
     ros::spinOnce();
 
     kitti_filtering_flow_ptr->Run();
-    kitti_filtering_flow_ptr->SaveOdometry();
-
     // save odometry estimations for evo evaluation:
-    // if (_need_save_odometry && ) {
-    //   _need_save_odometry = true;
-    // }
-
+    if (_need_save_odometry && kitti_filtering_flow_ptr->SaveOdometry()) {
+      _need_save_odometry = true;
+    }
     rate.sleep();
   }
+  kitti_filtering_flow_ptr->SaveOdometry();
 
   return 0;
 }
