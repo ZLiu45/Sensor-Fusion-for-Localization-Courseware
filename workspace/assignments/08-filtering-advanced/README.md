@@ -112,6 +112,15 @@ median: 7.77
 min: 5.67
 rmse: 7.82
 ```
+
+#### segment：
+##### before
+![tuning1](https://user-images.githubusercontent.com/11698181/154833246-877e0827-0a33-4f35-aef4-33ef36d5a4f7.png)
+![tuning1_5](https://user-images.githubusercontent.com/11698181/154833249-29878f8b-faa0-4e68-acd9-369ef05eda1d.png)
+##### after
+![tuning2](https://user-images.githubusercontent.com/11698181/154833263-c923931b-bd43-4eba-bdf7-6cf5729b1d89.png)
+![tuing2_5](https://user-images.githubusercontent.com/11698181/154833265-762242a5-28d8-4da2-b1cd-a83b86c217b2.png)
+
 ### 仿真实现：
 1. CorrectErrorEstimationPosiVel():
 ```
