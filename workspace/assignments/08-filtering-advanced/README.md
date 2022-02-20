@@ -48,7 +48,7 @@ void ErrorStateKalmanFilter::CorrectErrorEstimationPoseVel(
   Eigen::Matrix3d w_R_b = pose_.block<3, 3>(0, 0);
   YPoseVel_.setZero();
   YPoseVel_.head(3) = pose_.block<3, 1>(0, 3) - T_nb.block<3, 1>(0, 3);
-  YPoseVel_.segment<3>(3) = w_R_b.transpose() * vel_ - v_b;
+  YPoseVel_.segment<3>(3) = w_R_b.transpose() * vel_ - Eigen::Vector3d(v_b.x(), 0.0, 0.0);
 
   Eigen::Matrix3d delta_R =
       T_nb.block<3, 3>(0, 0).transpose() * pose_.block<3, 3>(0, 0);
@@ -69,7 +69,49 @@ void ErrorStateKalmanFilter::CorrectErrorEstimationPoseVel(
 
 ### 结果评价：
 #### 整体结果： 
-#### 路段截取： 
+##### Not using velocity measurement:![evo_laser_v0_0](https://user-images.githubusercontent.com/11698181/154829537-52ed68e3-4347-406f-ad4c-f91d20d62299.png)
+
+1. laser: 
+![evo_![evo_laser2](https://user-images.githubusercontent.com/11698181/154829455-62f3521d-f80a-4513-92e1-ec12e3d636d0.png)
+laser](https://user-images.githubusercontent.com/11698181/154829452-70a6a24b-794e-4b99-9fa9-de1d0d5cc6e1.png)
+```
+max: 13.22
+mean: 8.65
+median: 8.63
+min: 6.26 
+rmse: 8.67 
+```
+2. fused: 
+![evo_fused](https://user-images.githubusercontent.com/11698181/154829505-34ea58f2-a10b-4121-b2c6-d07fab1ff300.png)
+![evo_fused2](https://user-images.githubusercontent.com/11698181/154829507-59bdd035-ea03-4b9a-99e0-2164f5b976eb.png)
+```
+max: 13.03
+mean: 8.66
+median: 8.63
+min: 6.51
+rmse: 8.68 
+```
+##### using velocity measurement: 
+1. laser 
+![evo_laser_v0_0](https://user-images.githubusercontent.com/11698181/154829544-14080eee-5f6d-433a-a07a-8461f0e1f78c.png)
+![evo_laser_v0](https://user-images.githubusercontent.com/11698181/154829548-0437b41d-da57-42ec-92c9-e3129a1240e5.png)
+```
+max: 12.36
+mean: 7.81 
+median: 7.77
+min: 5.43 
+rmse: 7.83 
+```
+2. fused: 
+![evo_fused_v0_0](https://user-images.githubusercontent.com/11698181/154829582-adf2be15-3c4a-4a5b-8aad-4aabee667d16.png)
+![evo_fused_v0](https://user-images.githubusercontent.com/11698181/154829584-60054da5-de84-4a3b-bc35-0e659e7c28a0.png)
+```
+max: 12.18
+mean: 7.81
+median: 7.77
+min: 5.28
+rmse: 7.82
+```
 ### 仿真实现：
 1. CorrectErrorEstimationPosiVel():
 ```
