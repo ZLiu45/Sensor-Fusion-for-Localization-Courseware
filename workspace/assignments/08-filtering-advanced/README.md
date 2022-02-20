@@ -109,7 +109,7 @@ rmse: 7.83
 max: 12.18
 mean: 7.81
 median: 7.77
-min: 5.28
+min: 5.67
 rmse: 7.82
 ```
 ### 仿真实现：
@@ -134,3 +134,31 @@ void ErrorStateKalmanFilter::CorrectErrorEstimationPosiVel(
 }
 ```
 2. correctErrorStateEstimation():
+```
+case MeasurementType::POSI_VEL: {
+  //
+  // TODO: register new correction logic here:
+  CorrectErrorEstimationPosiVel(measurement.T_nb, measurement.v_b,
+                                measurement.w_b, Y, G, K);
+  P_ = ((MatrixP::Identity() - K * G) * P_).eval();
+  const VectorYPosiVel deltaY = YPosiVel_ - Y;
+  // LOG(INFO)  << deltaY.transpose(); 
+  // LOG(INFO)  << X_.transpose(); 
+  X_ = X_ + K * deltaY;
+  // LOG(INFO) << X_.transpose();
+  break;
+}
+```
+#### 整体结果： 
+![image](https://user-images.githubusercontent.com/11698181/154832552-9b27316c-bddc-45b1-92ce-fb41b1bffa5d.png)
+1. GNSS VS Fused: 
+![image](https://user-images.githubusercontent.com/11698181/154832825-b5af8ba3-4358-4b2b-bf00-c4a1acd0f169.png)
+![image](https://user-images.githubusercontent.com/11698181/154832833-e3cb06d7-7505-4a74-8f65-423aa1155304.png)
+```
+max: 3.55 
+mean: 2.27 
+median: 2.30 
+min: 0.2 
+rmse: 2.38
+```
+
