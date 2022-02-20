@@ -113,7 +113,8 @@ min: 5.67
 rmse: 7.82
 ```
 
-#### segment：
+#### 分段结果分析：
+以下对比图分别在大约 237‘ 和 258’ 的附近。可以看出当使用了新的模型之后， 在这两段更加smooth， 减少了侧向jump。  
 ##### before
 ![tuning1](https://user-images.githubusercontent.com/11698181/154833246-877e0827-0a33-4f35-aef4-33ef36d5a4f7.png)
 ![tuning1_5](https://user-images.githubusercontent.com/11698181/154833249-29878f8b-faa0-4e68-acd9-369ef05eda1d.png)
