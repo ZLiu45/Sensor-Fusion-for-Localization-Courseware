@@ -18,6 +18,7 @@
 ---
 
 ### 新模型代码实现：
+0. imu propagation update 部分和上一章相同
 1. correctErrorStateEstimation()
 ```
   switch (measurement_type) {
