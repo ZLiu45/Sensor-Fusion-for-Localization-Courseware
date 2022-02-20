@@ -49,6 +49,14 @@ KITTIFilteringFlow::KITTIFilteringFlow(
     laser_tf_pub_ptr_ = std::make_shared<TFBroadCaster>("/map", "/vehicle_link");
 
     filtering_ptr_ = std::make_shared<KITTIFiltering>();
+
+    if (
+        !FileManager::CreateFile(fused_odom_ofs_, WORK_SPACE_PATH + "/slam_data/trajectory/fused.txt") ||
+        !FileManager::CreateFile(laser_odom_ofs_, WORK_SPACE_PATH + "/slam_data/trajectory/laser.txt") ||
+        !FileManager::CreateFile(ref_odom_ofs_, WORK_SPACE_PATH + "/slam_data/trajectory/ground_truth.txt")
+    ) {
+        LOG(ERROR) << "Unable to create trajectory file" << std::endl; 
+    }
 }
 
 bool KITTIFilteringFlow::Run() {
@@ -103,18 +111,6 @@ bool KITTIFilteringFlow::SaveOdometry(void) {
         return false;
     }
 
-    // init output files:
-    std::ofstream fused_odom_ofs;
-    std::ofstream laser_odom_ofs;
-    std::ofstream ref_odom_ofs;
-    if (
-        !FileManager::CreateFile(fused_odom_ofs, WORK_SPACE_PATH + "/slam_data/trajectory/fused.txt") ||
-        !FileManager::CreateFile(laser_odom_ofs, WORK_SPACE_PATH + "/slam_data/trajectory/laser.txt") ||
-        !FileManager::CreateFile(ref_odom_ofs, WORK_SPACE_PATH + "/slam_data/trajectory/ground_truth.txt")
-    ) {
-        return false;
-    }
-
     // write outputs:
     for (size_t i = 0; i < trajectory.N; ++i) {
         // sync ref pose with gnss measurement:
@@ -134,13 +130,13 @@ bool KITTIFilteringFlow::SaveOdometry(void) {
         const Eigen::Vector3f &position_ref = current_gnss_data_.pose.block<3, 1>(0, 3);
         const Eigen::Vector3f &position_lidar = trajectory.lidar_.at(i).block<3, 1>(0, 3);
 
-        if ( (position_ref - position_lidar).norm() > 3.0 ) {
-            continue;
-        }
+        // if ( (position_ref - position_lidar).norm() > 3.0 ) {
+        //     continue;
+        // }
 
-        SavePose(trajectory.fused_.at(i), fused_odom_ofs);
-        SavePose(trajectory.lidar_.at(i), laser_odom_ofs);
-        SavePose(current_gnss_data_.pose, ref_odom_ofs);
+        SavePose(trajectory.fused_.at(i), fused_odom_ofs_);
+        SavePose(trajectory.lidar_.at(i), laser_odom_ofs_);
+        SavePose(current_gnss_data_.pose, ref_odom_ofs_);
     }
 
     return true;

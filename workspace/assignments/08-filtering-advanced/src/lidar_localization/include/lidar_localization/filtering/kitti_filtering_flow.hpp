@@ -143,6 +143,10 @@ class KITTIFilteringFlow {
       std::deque<Eigen::Matrix4f> lidar_;
       std::deque<Eigen::Matrix4f> ref_;
     } trajectory;
+
+    std::ofstream fused_odom_ofs_;
+    std::ofstream laser_odom_ofs_;
+    std::ofstream ref_odom_ofs_;
 };
 
 } // namespace lidar_localization
