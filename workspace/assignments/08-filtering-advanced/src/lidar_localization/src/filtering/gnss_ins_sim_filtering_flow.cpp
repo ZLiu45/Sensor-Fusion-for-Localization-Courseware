@@ -9,11 +9,8 @@
 #include "lidar_localization/filtering/gnss_ins_sim_filtering.hpp"
 
 #include "lidar_localization/tools/file_manager.hpp"
-
 #include "glog/logging.h"
-
 #include <ostream>
-
 #include "lidar_localization/global_defination/global_defination.h"
 
 namespace lidar_localization {
@@ -83,7 +80,7 @@ bool GNSSINSSimFilteringFlow::SaveOdometry(void) {
     return false;
   }
   
-  if (trajectory.N >= 1557 && has_recorded == true){
+  if (trajectory.N >= 1557 && has_recorded_ == true){
       return true; 
   }
   // init output files:
