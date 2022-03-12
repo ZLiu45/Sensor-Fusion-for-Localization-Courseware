@@ -1,119 +1,132 @@
-# Multi-Sensor Fusion for Localization & Mapping: Graph Optimization -- 多传感器融合定位与建图: 基于图优化的建图方法
+# Multi-Sensor Fusion for Localization & Mapping: Graph Optimization
 
-深蓝学院, 多传感器融合定位与建图, 第9章Graph Optimization for Mapping代码框架.
-
----
-
-## Overview
-
-本作业旨在加深对**基于图优化的建图方法**的理解.
-
-在IMU的预积分中, 课程只提供了残差对部分变量的雅可比, 请推导残差对其它变量的雅可比, 并在建图流程的代码中补全基于IMU预积分的融合方法中的待填内容，随后与不加IMU融合时的效果进行对比.
-
----
-
-## Getting Started
-
-### 环境检查: 确保Git Repo与使用的Docker Image均为最新
-
-首先, 请确保选择了正确的branch **09-graph-optimization**:
-
-<img src="doc/images/branch-check.png" alt="Branch Check" width="100%">
-
-执行以下命令，确保所使用的Git Repo与Docker Image均为最新:
-
-```bash
-# update git repo:
-git pull
-#
-# update docker image:
-#
-# 1. first, login to Sensor Fusion registry -- default password is shenlansf20210122:
-docker login --username=937570601@qq.com registry.cn-shanghai.aliyuncs.com
-# 2. then download images:
-docker pull registry.cn-shanghai.aliyuncs.com/shenlanxueyuan/sensor-fusion-workspace:bionic-cpu-vnc
+## code: 
+### imu-pre-integrator: 
+```
+// 1. get w_mid:
+  w_mid = (prev_w + curr_w) * 0.5;
+  // // 2. update relative orientation, so3:
+  prev_R = state.theta_ij_.matrix();
+  d_theta_ij = Sophus::SO3d::exp(w_mid * dt);
+  curr_theta_ij = state.theta_ij_ * d_theta_ij;
+  curr_R = curr_theta_ij.matrix();
+  state.theta_ij_ = curr_theta_ij;
+  // // 3. get a_mid:
+  a_mid = (prev_R * prev_a + curr_R * curr_a) * 0.5;
+  // 4. update relative translation:
+  state.alpha_ij_ += state.beta_ij_ * dt + 0.5 * a_mid * dt * dt;
+  // 5. update relative velocity:
+  state.beta_ij_ += a_mid * dt;
 ```
 
-### 及格要求: 公式推导正确, 补全代码之后功能正常
+```
+// update F and B 
+  F_.setIdentity();
+  dR_inv = d_theta_ij.inverse().matrix();
+  Eigen::Matrix3d skew_w_mid_t = skewMat(w_mid) * dt;
+  prev_R_a_hat = prev_R * skewMat(prev_a) * dt;
+  curr_R_a_hat = curr_R * skewMat(curr_a) * dt;
+  const Eigen::Matrix3d kId33 = Eigen::Matrix3d::Identity();
+  //
+  //
+  // F12 & F32:
+  F_.setIdentity();
+  F_.block<3, 3>(INDEX_ALPHA, INDEX_THETA) =
+      -0.25 * prev_R_a_hat * dt - 0.25 * curr_R_a_hat * dR_inv * dt;
+  F_.block<3, 3>(INDEX_BETA, INDEX_THETA) =
+      -0.5 * prev_R_a_hat - 0.5 * curr_R_a_hat * dR_inv;
+  F_.block<3, 3>(INDEX_ALPHA, INDEX_BETA) = kId33 * dt;
+  // F14 & F34:
+  F_.block<3, 3>(INDEX_ALPHA, INDEX_B_A) = -0.25 * (curr_R + prev_R) * dt * dt;
+  F_.block<3, 3>(INDEX_BETA, INDEX_B_A) = -0.5 * (curr_R + prev_R) * dt;
+  // F15 & F35:
+  F_.block<3, 3>(INDEX_ALPHA, INDEX_B_G) = 0.25 * curr_R_a_hat * dt * dt;
+  F_.block<3, 3>(INDEX_BETA, INDEX_B_G) = 0.5 * curr_R_a_hat * dt;
+  // F22:
+  F_.block<3, 3>(INDEX_BETA, INDEX_BETA) = -Sophus::SO3d::hat(w_mid);
+  //
+  B_.setZero();
+  // G11 & G31:
+  B_.block<3, 3>(INDEX_ALPHA, INDEX_M_ACC_PREV) = 0.25 * prev_R * dt * dt;
+  B_.block<3, 3>(INDEX_BETA, INDEX_M_ACC_PREV) = 0.5 * prev_R * dt;
+  // G12 & G32:
+  B_.block<3, 3>(INDEX_ALPHA, INDEX_M_GYR_PREV) =
+      -0.25 * curr_R_a_hat * dt * 0.5 * dt;
+  B_.block<3, 3>(INDEX_BETA, INDEX_M_GYR_PREV) = -0.5 * curr_R_a_hat * 0.5 * dt;
+  // G13 & G33:
+  B_.block<3, 3>(INDEX_ALPHA, INDEX_M_ACC_CURR) = 0.25 * curr_R * dt * dt;
+  B_.block<3, 3>(INDEX_BETA, INDEX_M_ACC_CURR) = 0.5 * curr_R * dt;
+  // G14 & G34:
+  B_.block<3, 3>(INDEX_ALPHA, INDEX_M_GYR_CURR) =
+      B_.block<3, 3>(INDEX_ALPHA, INDEX_M_GYR_PREV);
+  B_.block<3, 3>(INDEX_BETA, INDEX_M_GYR_CURR) =
+      B_.block<3, 3>(INDEX_BETA, INDEX_M_ACC_PREV);
 
-**公式推导**部分: 干就完了! 如果理论知识有较大欠缺, 推荐参考深蓝学院VIO课程中的相关内容
+  // G22 & G24
+  B_.block<3, 3>(INDEX_THETA, INDEX_M_GYR_PREV) = 0.5 * kId33 * dt;
+  B_.block<3, 3>(INDEX_THETA, INDEX_M_GYR_CURR) = 0.5 * kId33 * dt;
 
-**补全代码**部分:
+  // G45 & G56
+  B_.block<3, 3>(INDEX_B_A, INDEX_R_ACC_PREV) = kId33 * dt;
+  B_.block<3, 3>(INDEX_B_G, INDEX_R_GYR_PREV) = kId33 * dt;
+  P_ = F_ * P_ * F_.transpose() + B_ * Q_ * B_.transpose();
 
-启动Docker后, 打开浏览器, 进入Web Workspace. 启动Terminator, 将Shell的工作目录切换如下:
+  J_ = F_ * J_;
+```
+### edge_prvag_imu_pre_integration.hpp 
+```
+    // update pre-integration measurement caused by bias change:
+    if (v0->isUpdated()) {
+      Eigen::Vector3d d_b_a_i, d_b_g_i;
+      v0->getDeltaBiases(d_b_a_i, d_b_g_i);
+      updateMeasurement(d_b_a_i, d_b_g_i);
+    }
 
-<img src="doc/images/terminator.png" alt="Terminator" width="100%">
+    Eigen::Vector3d rel_p = _measurement.segment<3>(INDEX_P);
+    Eigen::Vector3d rel_v = _measurement.segment<3>(INDEX_V);
+    Eigen::Vector3d rel_theta = _measurement.segment<3>(INDEX_R);
+    const Sophus::SO3d rel_ori_ij = Sophus::SO3d::exp(rel_theta);
 
-在**上侧**的Shell中, 输入如下命令, **编译lidar_localization**. 如遇到错误, 且非首次编译, 请尝试执行**catkin clean**, 清理catkin cache.
-
-```bash
-# build:
-catkin config --install && catkin build lidar_localization
-# set up session:
-source install/setup.bash
-# launch:
-roslaunch lidar_localization lio_mapping.launch
+    // //
+    // // compute error:
+    // //
+    _error.block<3, 1>(INDEX_P, 0) =
+        ori_i.inverse() * (0.5 * g_ * T_ * T_ + pos_j - pos_i - vel_i * T_) -
+        rel_p;
+	LOG(INFO) << "position error: " << _error.block<3, 1>(INDEX_P, 0).transpose();
+    _error.block<3, 1>(INDEX_V, 0) =
+        ori_i.inverse() * (g_ * T_ + vel_j - vel_i) - rel_v;
+    _error.block<3, 1>(INDEX_R, 0) =
+        (Sophus::SO3d::exp(rel_theta).inverse() * ori_i.inverse() * ori_j)
+            .log();
+    _error.block<3, 1>(INDEX_A, 0) = b_a_j - b_a_i;
+    _error.block<3, 1>(INDEX_G, 0) = b_g_j - b_g_i;
 ```
 
-在**下侧**的Shell中, 输入如下命令, **Play KITTI ROS Bag**. 如果机器的配置较低, 可以降低播放速率.
-
-**注意**: 两个数据集均可用于完成课程, 对代码功能的运行没有任何影响, 区别在于第一个有Camera信息
-
-```bash
-# play ROS bag, full KITTI:
-rosbag play kitti_2011_10_03_drive_0027_synced.bag
-# play ROS bag, lidar-only KITTI:
-rosbag play kitti_lidar_only_2011_10_03_drive_0027_synced.bag
+### vertex_prvag.hpp 
 ```
-
-在**运行结束后**, 可以执行如下的命令, **保存地图与Loop Closure Metadata**
-
-```bash
-# set up session:
-source install/setup.bash
-# force backend optimization:
-rosservice call /optimize_map
-# save optimized map:
-rosservice call /save_map 
-# if you still use refence Scan Context Loop Closure implementation, execute this command.
-rosservice call /save_scan_context 
+    _estimate.pos +=
+        Eigen::Vector3d(update[PRVAG::INDEX_POS], update[PRVAG::INDEX_POS + 1],
+                        update[PRVAG::INDEX_POS + 2]);
+    _estimate.ori = _estimate.ori *
+                    Sophus::SO3d::exp(Eigen::Vector3d(
+                        update[PRVAG::INDEX_ORI], update[PRVAG::INDEX_ORI + 1],
+                        update[PRVAG::INDEX_ORI + 2]));
+    _estimate.vel +=
+        Eigen::Vector3d(update[PRVAG::INDEX_VEL], update[PRVAG::INDEX_VEL + 1],
+                        update[PRVAG::INDEX_VEL + 2]);
+    Eigen::Vector3d d_b_a_i(Eigen::Vector3d(update[PRVAG::INDEX_B_A],
+                                            update[PRVAG::INDEX_B_A + 1],
+                                            update[PRVAG::INDEX_B_A + 2]));
+    Eigen::Vector3d d_b_g_i(Eigen::Vector3d(update[PRVAG::INDEX_B_G],
+                                            update[PRVAG::INDEX_B_G + 1],
+                                            update[PRVAG::INDEX_B_G + 2]));
+    _estimate.b_a += d_b_a_i;
+    _estimate.b_g += d_b_g_i;
+    updateDeltaBiases(d_b_a_i, d_b_g_i);
 ```
+## evaluation: 
+![image](https://user-images.githubusercontent.com/11698181/158010558-6d9b7b04-c3ab-400c-b48a-742bb0faa225.png)
 
-如遇到显示问题, 可以Reset RViz, 然后再次使用/optimize_map服务. 优化对系统资源要求很高, 请耐心等待.
 
-上述三个ROS Service会生成所需的**Map**与**Scan Context Data**. 分别位于:
-
-* **Map**: src/lidar_localization/slam_data/map
-* **Scan Context Data**: src/lidar_localization/slam_data/scan_context
-
-成功后, 可以看到如下的RViz Visualization.
-
-<img src="doc/images/demo.png" alt="LIO Mapping Demo" width="100%">
-
-**此Demo为参考答案的演示效果**. 若未实现, 你将无法看到Demo的效果. **请你尝试理解框架, 在其中补完相关逻辑, 实现基于图优化的建图**. 你的任务是自行实现精度尽可能高的解算方法. 期待你的精彩发挥!
-
-请搜索TODO, 开始你的编码 :P. 
-
-此处将完成作业相关的配置汇总如下:
-
-* **IMU Pre-Integration** [here](src/lidar_localization/src/models/pre_integrator/imu_pre_integrator.cpp#L178)
-
-* **G2O Vertex / Edge for IMU Pre-Integration**
-    * **Key Frame Vertex** [here](src/lidar_localization/include/lidar_localization/models/graph_optimizer/g2o/vertex/vertex_prvag.hpp)
-    * **IMU Pre-Integration Edge** [here](src/lidar_localization/include/lidar_localization/models/graph_optimizer/g2o/edge/edge_prvag_imu_pre_integration.hpp)
-
-* **Module Hyper Params.**
-    * **LIO Backend Config** [here](src/lidar_localization/config/mapping/lio_back_end.yaml)
-
-### 良好要求: 在及格基础上, 实现和不加IMU时的效果对比和分析
-
-**备注**
-
-1. 对比是全方位的, 既包括轨迹精度的对比, 也包括地图质量的对比(因为IMU会增加估计的平滑性)；
-2. 由于数据集的老问题, 部分指标可能与预期不一致, 且地图质量无法量化, 因此给出自己的分析即可.
-
-干就完了! 期待你的精彩发挥.
-
-### 优秀要求: 在良好的基础上，完成融合编码器时预积分公式的推导(方差递推、残差对状态量雅可比、bias更新等)
-
-如果理论知识有较大欠缺, 推荐参考深蓝学院VIO课程中的相关内容
+## wheel encoder jacobian update:
