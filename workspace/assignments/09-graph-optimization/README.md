@@ -126,6 +126,6 @@
     updateDeltaBiases(d_b_a_i, d_b_g_i);
 ```
 ## evaluation: 
-<img src="https://user-images.githubusercontent.com/11698181/158010558-6d9b7b04-c3ab-400c-b48a-742bb0faa225.png" width="200" height="200" />
+<img src="https://user-images.githubusercontent.com/11698181/158010558-6d9b7b04-c3ab-400c-b48a-742bb0faa225.png" width="400"/>
 
 ## wheel encoder jacobian update:
