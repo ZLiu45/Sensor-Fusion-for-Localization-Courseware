@@ -144,6 +144,15 @@
 <img src="https://user-images.githubusercontent.com/11698181/158030656-c297613a-deb6-4664-8895-13ab7cf05978.png" width="400"/>
 <img src="https://user-images.githubusercontent.com/11698181/158030690-ea865be3-e4de-4680-83f8-3b214efd0766.png" width="400"/>
 #### evo ape: 
-
+| SE(3) | Umeyama alignment |
+| --- | ----------- |
+| max | 12.361094 |
+| mean | 2.86433 |
+| median | 2.258796 |
+| min | 0.096506 |
+| rmse | 3.46 |
+| std | 1.9409 |
+<img src="https://user-images.githubusercontent.com/11698181/158030894-822b6434-24cf-4011-98eb-49616aa4bcbd.png" width="400"/>
+<img src="https://user-images.githubusercontent.com/11698181/158030909-d9aa4207-6a1e-4e3a-8cc5-3411ed87c47e.png" width="400"/>
 
 ## wheel encoder jacobian update:
