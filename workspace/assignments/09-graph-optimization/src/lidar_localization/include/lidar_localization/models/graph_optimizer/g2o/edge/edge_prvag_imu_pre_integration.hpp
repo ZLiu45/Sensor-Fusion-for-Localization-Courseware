@@ -76,6 +76,7 @@ public:
     _error.block<3, 1>(INDEX_P, 0) =
         ori_i.inverse() * (0.5 * g_ * T_ * T_ + pos_j - pos_i - vel_i * T_) -
         rel_p;
+	LOG(INFO) << "position error: " << _error.block<3, 1>(INDEX_P, 0).transpose();
     _error.block<3, 1>(INDEX_V, 0) =
         ori_i.inverse() * (g_ * T_ + vel_j - vel_i) - rel_v;
     _error.block<3, 1>(INDEX_R, 0) =

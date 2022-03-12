@@ -250,32 +250,28 @@ void IMUPreIntegrator::UpdateState(void) {
   //
   // 1. intermediate results:
   F_.setIdentity();
+  dR_inv = d_theta_ij.inverse().matrix();
   Eigen::Matrix3d skew_w_mid_t = skewMat(w_mid) * dt;
-  prev_R_a_hat = skewMat(prev_a) * dt;
-  curr_R_a_hat = skewMat(curr_a) * dt;
+  prev_R_a_hat = prev_R * skewMat(prev_a) * dt;
+  curr_R_a_hat = curr_R * skewMat(curr_a) * dt;
   const Eigen::Matrix3d kId33 = Eigen::Matrix3d::Identity();
   //
   //
   // F12 & F32:
   F_.setIdentity();
   F_.block<3, 3>(INDEX_ALPHA, INDEX_THETA) =
-      -0.25 * prev_R * prev_R_a_hat * dt -
-      0.25 * curr_R * curr_R_a_hat * (kId33 - skew_w_mid_t) * dt;
+      -0.25 * prev_R_a_hat * dt - 0.25 * curr_R_a_hat * dR_inv * dt;
   F_.block<3, 3>(INDEX_BETA, INDEX_THETA) =
-      -0.5 * prev_R * prev_R_a_hat -
-      0.5 * curr_R * curr_R_a_hat * (kId33 - skew_w_mid_t);
+      -0.5 * prev_R_a_hat - 0.5 * curr_R_a_hat * dR_inv;
   F_.block<3, 3>(INDEX_ALPHA, INDEX_BETA) = kId33 * dt;
   // F14 & F34:
   F_.block<3, 3>(INDEX_ALPHA, INDEX_B_A) = -0.25 * (curr_R + prev_R) * dt * dt;
   F_.block<3, 3>(INDEX_BETA, INDEX_B_A) = -0.5 * (curr_R + prev_R) * dt;
   // F15 & F35:
-  F_.block<3, 3>(INDEX_ALPHA, INDEX_B_G) =
-      0.25 * curr_R * curr_R_a_hat * dt * dt;
-  F_.block<3, 3>(INDEX_BETA, INDEX_B_G) = 0.5 * curr_R * curr_R_a_hat * dt;
+  F_.block<3, 3>(INDEX_ALPHA, INDEX_B_G) = 0.25 * curr_R_a_hat * dt * dt;
+  F_.block<3, 3>(INDEX_BETA, INDEX_B_G) = 0.5 * curr_R_a_hat * dt;
   // F22:
-  F_.block<3, 3>(INDEX_BETA, INDEX_BETA) = kId33;
-  // F13
-  F_.block<3, 3>(INDEX_ALPHA, INDEX_BETA) = kId33 * dt;
+  F_.block<3, 3>(INDEX_BETA, INDEX_BETA) = -Sophus::SO3d::hat(w_mid);
   //
   //
   B_.setZero();
@@ -284,9 +280,8 @@ void IMUPreIntegrator::UpdateState(void) {
   B_.block<3, 3>(INDEX_BETA, INDEX_M_ACC_PREV) = 0.5 * prev_R * dt;
   // G12 & G32:
   B_.block<3, 3>(INDEX_ALPHA, INDEX_M_GYR_PREV) =
-      -0.25 * curr_R * curr_R_a_hat * dt * 0.5 * dt;
-  B_.block<3, 3>(INDEX_BETA, INDEX_M_GYR_PREV) =
-      -0.5 * curr_R * curr_R_a_hat * 0.5 * dt;
+      -0.25 * curr_R_a_hat * dt * 0.5 * dt;
+  B_.block<3, 3>(INDEX_BETA, INDEX_M_GYR_PREV) = -0.5 * curr_R_a_hat * 0.5 * dt;
   // G13 & G33:
   B_.block<3, 3>(INDEX_ALPHA, INDEX_M_ACC_CURR) = 0.25 * curr_R * dt * dt;
   B_.block<3, 3>(INDEX_BETA, INDEX_M_ACC_CURR) = 0.5 * curr_R * dt;
