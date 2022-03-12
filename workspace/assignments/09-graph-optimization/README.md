@@ -126,6 +126,24 @@
     updateDeltaBiases(d_b_a_i, d_b_g_i);
 ```
 ## evaluation: 
+### plots From RViz: 
 <img src="https://user-images.githubusercontent.com/11698181/158010558-6d9b7b04-c3ab-400c-b48a-742bb0faa225.png" width="400"/>
+### evo analaysis
+<img src="https://user-images.githubusercontent.com/11698181/158030449-f33f583a-ec85-4b53-8a41-054c393d4a14.png" width="400"/>
+<img src="https://user-images.githubusercontent.com/11698181/158030500-103f9545-6fe7-4a1e-b1f0-32a20bcee173.png" width="400"/>
+
+#### evo rpe: 
+| SE(3) | Umeyama alignment |
+| --- | ----------- |
+| max | 0.377172 |
+| mean | 0.1216 |
+| median | 0.105 |
+| min | 0.0058 |
+| rmse | 0.1452 |
+| std | 0.079281 |
+<img src="https://user-images.githubusercontent.com/11698181/158030656-c297613a-deb6-4664-8895-13ab7cf05978.png" width="400"/>
+<img src="https://user-images.githubusercontent.com/11698181/158030690-ea865be3-e4de-4680-83f8-3b214efd0766.png" width="400"/>
+#### evo ape: 
+
 
 ## wheel encoder jacobian update:
