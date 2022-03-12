@@ -139,7 +139,6 @@ private:
     struct {
         // gravity constant:
         Eigen::Vector3d g_;
-
         // a. relative translation:
         Eigen::Vector3d alpha_ij_;
         // b. relative orientation:
@@ -162,7 +161,7 @@ private:
     MatrixQ Q_ = MatrixQ::Zero();
 
     // process equation:
-    MatrixF F_ = MatrixF::Zero();
+    MatrixF F_ = MatrixF::Identity();
     MatrixB B_ = MatrixB::Zero();
 
     /**
