@@ -125,12 +125,15 @@
     _estimate.b_g += d_b_g_i;
     updateDeltaBiases(d_b_a_i, d_b_g_i);
 ```
-## evaluation: 
-### plots From RViz: 
-<img src="https://user-images.githubusercontent.com/11698181/158010558-6d9b7b04-c3ab-400c-b48a-742bb0faa225.png" width="400"/>
-### evo analaysis
-<img src="https://user-images.githubusercontent.com/11698181/158030449-f33f583a-ec85-4b53-8a41-054c393d4a14.png" width="400"/>
-<img src="https://user-images.githubusercontent.com/11698181/158030500-103f9545-6fe7-4a1e-b1f0-32a20bcee173.png" width="400"/>
+## evaluation:
+### using IMU pre-integration 
+
+#### plots From RViz: 
+<img src="https://user-images.githubusercontent.com/11698181/158010558-6d9b7b04-c3ab-400c-b48a-742bb0faa225.png" width="500"/>
+
+#### evo analaysis
+<img src="https://user-images.githubusercontent.com/11698181/158030449-f33f583a-ec85-4b53-8a41-054c393d4a14.png" width="500"/>
+<img src="https://user-images.githubusercontent.com/11698181/158030500-103f9545-6fe7-4a1e-b1f0-32a20bcee173.png" width="500"/>
 
 #### evo rpe: 
 | SE(3) | Umeyama alignment |
@@ -141,8 +144,8 @@
 | min | 0.0058 |
 | rmse | 0.1452 |
 | std | 0.079281 |
-<img src="https://user-images.githubusercontent.com/11698181/158030656-c297613a-deb6-4664-8895-13ab7cf05978.png" width="400"/>
-<img src="https://user-images.githubusercontent.com/11698181/158030690-ea865be3-e4de-4680-83f8-3b214efd0766.png" width="400"/>
+<img src="https://user-images.githubusercontent.com/11698181/158030656-c297613a-deb6-4664-8895-13ab7cf05978.png" width="500"/>
+<img src="https://user-images.githubusercontent.com/11698181/158030690-ea865be3-e4de-4680-83f8-3b214efd0766.png" width="500"/>
 
 #### evo ape: 
 | SE(3) | Umeyama alignment |
@@ -153,7 +156,39 @@
 | min | 0.096506 |
 | rmse | 3.46 |
 | std | 1.9409 |
-<img src="https://user-images.githubusercontent.com/11698181/158030894-822b6434-24cf-4011-98eb-49616aa4bcbd.png" width="400"/>
-<img src="https://user-images.githubusercontent.com/11698181/158030909-d9aa4207-6a1e-4e3a-8cc5-3411ed87c47e.png" width="400"/>
+<img src="https://user-images.githubusercontent.com/11698181/158030894-822b6434-24cf-4011-98eb-49616aa4bcbd.png" width="500"/>
+<img src="https://user-images.githubusercontent.com/11698181/158030909-d9aa4207-6a1e-4e3a-8cc5-3411ed87c47e.png" width="500"/>
+
+### with IMU pre-integration
+
+#### plots From RViz: 
+<img src="https://user-images.githubusercontent.com/11698181/158031441-ebdcf906-6ff0-40a7-b20c-d3ad4a9af925.png" width="500"/>
+
+#### evo analaysis
+#### evo rpe: 
+| SE(3) | Umeyama alignment |
+| --- | ----------- |
+| max | 0.37133 |
+| mean | 0.114145 |
+| median | 0.107 |
+| min | 0.00575 |
+| rmse | 0.1286 |
+| std | 0.059 |
+
+<img src="https://user-images.githubusercontent.com/11698181/158031687-2d1f7c1e-3e8b-43c0-a34c-e01fa57ecff3.png" width="500"/>
+<img src="https://user-images.githubusercontent.com/11698181/158031664-78884130-32c5-4f3b-8c4a-c3ac17121c81.png" width="500"/>
+
+#### evo ape: 
+| SE(3) | Umeyama alignment |
+| --- | ----------- |
+| max | 14.119667 |
+| mean | 3.773 |
+| median | 2.556 |
+| min | 0.0404 |
+| rmse | 5.0596 |
+| std | 3.3669 |
+
+<img src="https://user-images.githubusercontent.com/11698181/158031572-db567046-2d76-455a-af3b-ccaf0f062347.png" width="500"/>
+<img src="https://user-images.githubusercontent.com/11698181/158031598-d7b784d7-2fbd-49ea-baef-4a844f90ec31.png" width="500"/>
 
 ## wheel encoder jacobian update:
