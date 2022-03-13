@@ -192,3 +192,5 @@
 <img src="https://user-images.githubusercontent.com/11698181/158031598-d7b784d7-2fbd-49ea-baef-4a844f90ec31.png" width="640"/>
 
 ## wheel encoder jacobian update:
+[jacobians_wheel_encoder.pdf](https://github.com/ZLiu45/Sensor-Fusion-for-Localization-Courseware/files/8239140/jacobians_wheel_encoder.pdf)
+<img src="https://user-images.githubusercontent.com/11698181/158050285-b98132a7-133c-4b23-a79b-d6545cb294bb.png" width="640"/>
