@@ -1,5 +1,6 @@
 /*
- * @Description: ceres residual block for lidar frontend relative pose measurement
+ * @Description: ceres residual block for lidar frontend relative pose
+ * measurement
  * @Author: Ge Yao
  * @Date: 2020-11-29 15:47:49
  */
@@ -8,9 +9,9 @@
 
 #include <ceres/ceres.h>
 
-#include <Eigen/Eigen>
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <Eigen/Eigen>
 
 #include <sophus/so3.hpp>
 
@@ -20,89 +21,112 @@ namespace sliding_window {
 
 class FactorPRVAGRelativePose : public ceres::SizedCostFunction<6, 15, 15> {
 public:
-	static const int INDEX_P = 0;
-	static const int INDEX_R = 3;
+  static const int INDEX_P = 0;
+  static const int INDEX_R = 3;
 
-  FactorPRVAGRelativePose(void) {};
+  FactorPRVAGRelativePose(void){};
 
-  void SetMeasurement(const Eigen::VectorXd &m) {
-		m_ = m;
-	}
+  void SetMeasurement(const Eigen::VectorXd &m) { m_ = m; }
 
-  void SetInformation(const Eigen::MatrixXd &I) {
-    I_ = I;
-  }
+  void SetInformation(const Eigen::MatrixXd &I) { I_ = I; }
 
-  virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const {
+  virtual bool Evaluate(double const *const *parameters, double *residuals,
+                        double **jacobians) const {
     //
     // parse parameters:
     //
     // a. pose i
-    Eigen::Map<const Eigen::Vector3d>     pos_i(&parameters[0][INDEX_P]);
+    Eigen::Map<const Eigen::Vector3d> pos_i(&parameters[0][INDEX_P]);
     Eigen::Map<const Eigen::Vector3d> log_ori_i(&parameters[0][INDEX_R]);
-    const Sophus::SO3d                    ori_i = Sophus::SO3d::exp(log_ori_i);
+    const Sophus::SO3d ori_i = Sophus::SO3d::exp(log_ori_i);
 
     // b. pose j
-    Eigen::Map<const Eigen::Vector3d>     pos_j(&parameters[1][INDEX_P]);
+    Eigen::Map<const Eigen::Vector3d> pos_j(&parameters[1][INDEX_P]);
     Eigen::Map<const Eigen::Vector3d> log_ori_j(&parameters[1][INDEX_R]);
-    const Sophus::SO3d                    ori_j = Sophus::SO3d::exp(log_ori_j);
+    const Sophus::SO3d ori_j = Sophus::SO3d::exp(log_ori_j);
 
     //
     // parse measurement:
-    // 
-		const Eigen::Vector3d     &pos_ij = m_.block<3, 1>(INDEX_P, 0);
-		const Eigen::Vector3d &log_ori_ij = m_.block<3, 1>(INDEX_R, 0);
-    const Sophus::SO3d         ori_ij = Sophus::SO3d::exp(log_ori_ij);
+    //
+    const Eigen::Vector3d &pos_ij = m_.block<3, 1>(INDEX_P, 0);
+    const Eigen::Vector3d &log_ori_ij = m_.block<3, 1>(INDEX_R, 0);
+    const Sophus::SO3d ori_ij = Sophus::SO3d::exp(log_ori_ij);
 
     //
-    // TODO: get square root of information matrix:
+    // get square root of information matrix:
     //
+    Eigen::LLT<Eigen::Matrix<double, 6, 6>> LowerI(I_);
+    Eigen::Matrix<double, 6, 6> sqrt_info = LowerI.matrixL().transpose();
 
+    // compute residual:
+    //
+    Eigen::Map<Eigen::Matrix<double, 6, 1>> res(residuals);
+    const Eigen::Vector3d world_pos_ij = pos_j - pos_i;
+    const Sophus::SO3d i_ori_world = ori_i.inverse();
+    const Sophus::SO3d ori_ij_est = i_ori_world * ori_j;
+    res.segment<3>(INDEX_P) = i_ori_world * (world_pos_ij)-pos_ij;
+    res.segment<3>(INDEX_R) = (ori_ij.inverse() * ori_ij_est).log();
 
     //
-    // TODO: compute residual:
+    // compute jacobians:
     //
-
-    //
-    // TODO: compute jacobians:
-    //
-    if ( jacobians ) {
+    if (jacobians) {
       // compute shared intermediate results:
+      const Eigen::Matrix3d J_r_inv = JacobianRInv(res.egment<3>(INDEX_R));
 
-      if ( jacobians[0] ) {
+      if (jacobians[0]) {
         // implement computing:
+        Eigen::Map<Eigen::Matrix<double, 6, 15, Eigen::RowMajor>> jac_i(
+            jacobians[0]);
+        jac_i.setZero();
+        jac_i.block<3, 3>(INDEX_P, INDEX_P) = -i_ori_world.matrix();
+        jac_i.block<3, 3>(INDEX_P, INDEX_R) =
+            Sophus::SO3d::hat(i_ori_world * world_p_ij).matrix();
+        jac_i.block<3, 3>(INDEX_R, INDEX_R) =
+            -J_r_inv * ori_ij_est.matrix().transpose();
+
+        jac_i = sqrt_info * jac_i;
       }
 
-      if ( jacobians[1] ) {
+      if (jacobians[1]) {
         // implement computing:
+        Eigen::Map<Eigen::Matrix<double, 6, 15, Eigen::RowMajor>> jac_j(
+            jacobians[1]);
+        jac_j.setZero();
+        jac_j.block<3, 3>(INDEX_P, INDEX_P) = i_ori_world.matrix();
+        jac_j.block<3, 3>(INDEX_R, INDEX_R) = J_r_inv;
+
+        jac_j = sqrt_info * jac_j;
       }
     }
 
     //
-    // TODO: correct residual by square root of information matrix:
+    // correct residual by square root of information matrix:
     //
+    res = sqrt_info * res;
 
     return true;
   }
 
 private:
   static Eigen::Matrix3d JacobianRInv(const Eigen::Vector3d &w) {
-      Eigen::Matrix3d J_r_inv = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d J_r_inv = Eigen::Matrix3d::Identity();
 
-      double theta = w.norm();
+    double theta = w.norm();
 
-      if ( theta > 1e-5 ) {
-          Eigen::Vector3d k = w.normalized();
-          Eigen::Matrix3d K = Sophus::SO3d::hat(k);
-          
-          J_r_inv = J_r_inv 
-                    + 0.5 * K
-                    + (1.0 - (1.0 + std::cos(theta)) * theta / (2.0 * std::sin(theta))) * K * K;
-      }
+    if (theta > 1e-5) {
+      Eigen::Vector3d k = w.normalized();
+      Eigen::Matrix3d K = Sophus::SO3d::hat(k);
 
-      return J_r_inv;
+      J_r_inv =
+          J_r_inv + 0.5 * K +
+          (1.0 - (1.0 + std::cos(theta)) * theta / (2.0 * std::sin(theta))) *
+              K * K;
+    }
+
+    return J_r_inv;
   }
-  
+
   Eigen::VectorXd m_;
   Eigen::MatrixXd I_;
 };
