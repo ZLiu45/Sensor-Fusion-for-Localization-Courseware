@@ -68,7 +68,7 @@ public:
     const Eigen::Vector3d &alpha_ij = m_.block<3, 1>(INDEX_P, 0);
     const Eigen::Vector3d &theta_ij = m_.block<3, 1>(INDEX_R, 0);
     const Eigen::Vector3d &beta_ij = m_.block<3, 1>(INDEX_V, 0);
-
+    const Sophus::SO3d ori_ij_est = Sophus::SO3d::exp(theta_ij);
     //
     // get square root of information matrix:
     Eigen::LLT<Matrix15d> LowerI(I_);
@@ -77,17 +77,17 @@ public:
     //
     // compute residual:
     //
-    Eigen::Map<Eigen::Matrix<doule, 15, 1>> res(residuals);
-    const Eigen::Matrix3d i_ori_world = ori_i.inverse();
 
+    const Sophus::SO3d i_ori_world = ori_i.inverse();
     const Eigen::Vector3d world_p_ij =
-        (pos_j - pos_i - vel_i * T + 0.5 * g_ * T_ * T_);
+        (pos_j - pos_i - vel_i * T_ + 0.5 * g_ * T_ * T_);
     const Eigen::Vector3d world_v_ij = (vel_j - vel_i + g_ * T_);
-    const Sophus::SO3d ori_ij_est = (ori_i.inverse() * ori_j);
+    const Sophus::SO3d ori_ij = (ori_i.inverse() * ori_j);
     static const Eigen::Matrix3d kI33 = Eigen::Matrix3d::Identity();
 
+    Eigen::Map<Eigen::Matrix<double, 15, 1>> res(residuals);
     res.segment<3>(INDEX_P) = i_ori_world * world_p_ij - alpha_ij;
-    res.segment<3>(INDEX_R) = (ori_ij.inverse() * ori_ij_est).log();
+    res.segment<3>(INDEX_R) = (ori_ij_est.inverse() * ori_ij).log();
     res.segment<3>(INDEX_V) = i_ori_world * world_v_ij - beta_ij;
     res.segment<3>(INDEX_A) = b_a_j - b_a_i;
     res.segment<3>(INDEX_G) = b_g_j - b_g_i;
@@ -105,7 +105,7 @@ public:
         jacobian_i.block<3, 3>(INDEX_P, INDEX_P) = -i_ori_world.matrix();
         jacobian_i.block<3, 3>(INDEX_P, INDEX_R) =
             Sophus::SO3d::hat(i_ori_world * world_p_ij).matrix();
-        jacobian_i.block<3, 3>(INDEX_P, INDEX_V) = -i_ori_world.matrix() * T;
+        jacobian_i.block<3, 3>(INDEX_P, INDEX_V) = -i_ori_world.matrix() * T_;
         jacobian_i.block<3, 3>(INDEX_P, INDEX_A) =
             -J_.block<3, 3>(INDEX_P, INDEX_A);
         jacobian_i.block<3, 3>(INDEX_P, INDEX_G) =
@@ -113,17 +113,17 @@ public:
 
         // b. residual, orientation:
         jacobian_i.block<3, 3>(INDEX_R, INDEX_R) =
-            -J_r_inv * ori_ij_est.matrix().transpose();
+            -J_r_inv * ori_ij.matrix().transpose();
         jacobian_i.block<3, 3>(INDEX_R, INDEX_G) =
             -J_r_inv *
             Sophus::SO3d::exp(res.block<3, 1>(INDEX_R, 0)).matrix().inverse() *
-            JacobianR(J_block<3, 3>(INDEX_R, INDEX_G) *
+            JacobianR(J_.block<3, 3>(INDEX_R, INDEX_G) *
                       (b_g_i - m_.block<3, 1>(INDEX_G, 0))) *
             J_.block<3, 3>(INDEX_R, INDEX_G);
 
         // c. residual, velocity:
         jacobian_i.block<3, 3>(INDEX_V, INDEX_R) =
-            Sophus::SO3d::Hat(i_ori_world * world_v_ij);
+            Sophus::SO3d::hat(i_ori_world * world_v_ij);
         jacobian_i.block<3, 3>(INDEX_V, INDEX_V) = -i_ori_world.matrix();
         jacobian_i.block<3, 3>(INDEX_V, INDEX_A) =
             -J_.block<3, 3>(INDEX_V, INDEX_A);
@@ -167,6 +167,7 @@ public:
 private:
   static Eigen::Matrix3d JacobianRInv(const Eigen::Vector3d &w) {
     Eigen::Matrix3d J_r_inv = Eigen::Matrix3d::Identity();
+    ;
 
     double theta = w.norm();
 
@@ -183,13 +184,28 @@ private:
     return J_r_inv;
   }
 
+  static Eigen::Matrix3d JacobianR(const Eigen::Vector3d &w) {
+    Eigen::Matrix3d J_r = Eigen::Matrix3d::Identity();
+    double theta = w.norm();
+    if (theta > 1e-5) {
+      Eigen::Vector3d a = w.normalized();
+      Eigen::Matrix3d a_hat = Sophus::SO3d::hat(a);
+
+      double sinc = sin(theta) / theta;
+
+      J_r = sinc * Eigen::Matrix3d::Identity() +
+            (1 - sinc) * a * a.transpose() - (1 - cos(theta)) / theta * a_hat;
+    }
+
+    return J_r;
+  }
+
   double T_ = 0.0;
 
   Eigen::Vector3d g_ = Eigen::Vector3d::Zero();
 
   Eigen::VectorXd m_;
   Eigen::MatrixXd I_;
-
   Eigen::MatrixXd J_;
 };
 

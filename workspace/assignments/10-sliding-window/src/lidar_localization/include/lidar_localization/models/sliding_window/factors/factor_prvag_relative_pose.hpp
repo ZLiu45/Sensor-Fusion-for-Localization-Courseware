@@ -61,10 +61,12 @@ public:
     // compute residual:
     //
     Eigen::Map<Eigen::Matrix<double, 6, 1>> res(residuals);
-    const Eigen::Vector3d world_pos_ij = pos_j - pos_i;
+
     const Sophus::SO3d i_ori_world = ori_i.inverse();
     const Sophus::SO3d ori_ij_est = i_ori_world * ori_j;
-    res.segment<3>(INDEX_P) = i_ori_world * (world_pos_ij)-pos_ij;
+    const Eigen::Vector3d pos_ij_est = i_ori_world * (pos_j - pos_i);
+
+    res.segment<3>(INDEX_P) = pos_ij_est - pos_ij;
     res.segment<3>(INDEX_R) = (ori_ij.inverse() * ori_ij_est).log();
 
     //
@@ -72,7 +74,7 @@ public:
     //
     if (jacobians) {
       // compute shared intermediate results:
-      const Eigen::Matrix3d J_r_inv = JacobianRInv(res.egment<3>(INDEX_R));
+      const Eigen::Matrix3d J_r_inv = JacobianRInv(res.segment<3>(INDEX_R));
 
       if (jacobians[0]) {
         // implement computing:
@@ -81,7 +83,7 @@ public:
         jac_i.setZero();
         jac_i.block<3, 3>(INDEX_P, INDEX_P) = -i_ori_world.matrix();
         jac_i.block<3, 3>(INDEX_P, INDEX_R) =
-            Sophus::SO3d::hat(i_ori_world * world_p_ij).matrix();
+            Sophus::SO3d::hat(pos_ij_est).matrix();
         jac_i.block<3, 3>(INDEX_R, INDEX_R) =
             -J_r_inv * ori_ij_est.matrix().transpose();
 
