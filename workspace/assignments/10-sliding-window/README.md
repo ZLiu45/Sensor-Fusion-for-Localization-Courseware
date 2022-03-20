@@ -351,11 +351,100 @@
     e_ = S_inv_sqrt.asDiagonal() * saes2.eigenvectors().transpose() * b_r_prime;
   }
    ```
+   #### ceres sliding window: [here](https://github.com/ZLiu45/Sensor-Fusion-for-Localization-Courseware/blob/zliu/sliding_window/workspace/assignments/10-sliding-window/src/lidar_localization/src/models/sliding_window/ceres_sliding_window.cpp)
+   ```
+   if (!residual_blocks_.map_matching_pose.empty() &&
+        !residual_blocks_.relative_pose.empty() &&
+        !residual_blocks_.imu_pre_integration.empty()) {
+      auto &key_frame_m = optimized_key_frames_.at(N - kWindowSize - 1);
+      auto &key_frame_r = optimized_key_frames_.at(N - kWindowSize - 0);
+      const ceres::CostFunction *factor_map_matching_pose =
+          GetResMapMatchingPose(residual_blocks_.map_matching_pose.front());
+      const ceres::CostFunction *factor_relative_pose =
+          GetResRelativePose(residual_blocks_.relative_pose.front());
+      const ceres::CostFunction *factor_imu_pre_integration =
+          GetResIMUPreIntegration(residual_blocks_.imu_pre_integration.front());
+
+      sliding_window::FactorPRVAGMarginalization *factor_marginalization =
+          new sliding_window::FactorPRVAGMarginalization();
+      factor_marginalization->SetResMapMatchingPose(
+          factor_map_matching_pose, std::vector<double *>{key_frame_m.prvag});
+
+      factor_marginalization->SetResRelativePose(
+          factor_relative_pose,
+          std::vector<double *>{key_frame_m.prvag, key_frame_r.prvag});
+
+      factor_marginalization->SetResIMUPreIntegration(
+          factor_imu_pre_integration,
+          std::vector<double *>{key_frame_m.prvag, key_frame_r.prvag});
+
+      factor_marginalization->Marginalize(key_frame_r.prvag);
+      // add marginalization factor into sliding window
+      problem.AddResidualBlock(factor_marginalization, NULL, key_frame_r.prvag);
+
+      residual_blocks_.map_matching_pose.pop_front();
+      residual_blocks_.relative_pose.pop_front();
+      residual_blocks_.imu_pre_integration.pop_front();
+    }
+
+    LOG(INFO) << "set marginalization factor";
+    // b.2. map matching pose constraint:
+    if (!residual_blocks_.map_matching_pose.empty()) {
+      for (const auto &residual_map_matching_pose :
+           residual_blocks_.map_matching_pose) {
+        auto &key_frame =
+            optimized_key_frames_.at(residual_map_matching_pose.param_index);
+
+        sliding_window::FactorPRVAGMapMatchingPose *factor_map_matching_pose =
+            GetResMapMatchingPose(residual_map_matching_pose);
+
+        // add map matching factor into sliding window
+        problem.AddResidualBlock(factor_map_matching_pose,
+                                 config_.loss_function_ptr.get(),
+                                 key_frame.prvag);
+      }
+    }
+    LOG(INFO) << "set map matching factor";
+
+    // b.3. relative pose constraint:
+    if (!residual_blocks_.relative_pose.empty()) {
+      for (const auto &residual_relative_pose :
+           residual_blocks_.relative_pose) {
+        auto &key_frame_i =
+            optimized_key_frames_.at(residual_relative_pose.param_index_i);
+        auto &key_frame_j =
+            optimized_key_frames_.at(residual_relative_pose.param_index_j);
+
+        sliding_window::FactorPRVAGRelativePose *factor_relative_pose =
+            GetResRelativePose(residual_relative_pose);
+
+        // add relative pose factor into sliding window
+        problem.AddResidualBlock(factor_relative_pose,
+                                 config_.loss_function_ptr.get(),
+                                 key_frame_i.prvag, key_frame_j.prvag);
+      }
+    }
+    LOG(INFO) << "set relative pose factor";
+
+    // TODO: b.4. IMU pre-integration constraint
+    if (!residual_blocks_.imu_pre_integration.empty()) {
+      for (const auto &residual_imu_pre_integration :
+           residual_blocks_.imu_pre_integration) {
+        auto &key_frame_i = optimized_key_frames_.at(
+            residual_imu_pre_integration.param_index_i);
+        auto &key_frame_j = optimized_key_frames_.at(
+            residual_imu_pre_integration.param_index_j);
+
+        sliding_window::FactorPRVAGIMUPreIntegration
+            *factor_imu_pre_integration =
+                GetResIMUPreIntegration(residual_imu_pre_integration);
+
+        // TODO: add IMU factor into sliding window
+        problem.AddResidualBlock(factor_imu_pre_integration,
+                                 nullptr,
+                                 key_frame_i.prvag, key_frame_j.prvag);
+      }
+   ```
 * **Module Hyper Params.**
     * **Sliding Window Config** [here](src/lidar_localization/config/matching/sliding_window.yaml)
-
-### 实现功能的基础上，性能在部分路段比EKF有改善。
-
-
-### 不同窗口长度下的融合结果，并对效果及原因做对比分析
 
