@@ -445,6 +445,76 @@
                                  key_frame_i.prvag, key_frame_j.prvag);
       }
    ```
+   
+   #### sliding window [here](https://github.com/ZLiu45/Sensor-Fusion-for-Localization-Courseware/blob/zliu/sliding_window/workspace/assignments/10-sliding-window/src/lidar_localization/src/matching/back_end/sliding_window.cpp)
+   ```
+   bool SlidingWindow::Update(void) {
+  static KeyFrame last_key_frame_ = current_key_frame_;
+
+  // add node for new key frame pose:
+  //
+  // fix the pose of the first key frame for lidar only mapping:
+  if (sliding_window_ptr_->GetNumParamBlocks() == 0) {
+    // TODO: add init key frame
+    sliding_window_ptr_->AddPRVAGParam(current_key_frame_, true);
+  } else {
+    // TODO: add current key frame
+    sliding_window_ptr_->AddPRVAGParam(current_key_frame_, false);
+  }
+
+  // get num. of vertices:
+  const int N = sliding_window_ptr_->GetNumParamBlocks();
+
+  // get param block ID, current:
+  const int param_index_j = N - 1;
+
+  //
+  // add unary constraints:
+  //
+  //
+  // a. map matching / GNSS position:
+  //
+  if (N > 0 && measurement_config_.source.map_matching) {
+    // get prior position measurement:
+    Eigen::Matrix4d prior_pose = current_map_matching_pose_.pose.cast<double>();
+
+    // TODO: add constraint, GNSS position:
+    sliding_window_ptr_->AddPRVAGMapMatchingPoseFactor(
+        param_index_j, prior_pose, measurement_config_.noise.map_matching);
+  }
+
+  //
+  // add binary constraints:
+  //
+  if (N > 1) {
+    // get param block ID, previous:
+    const int param_index_i = N - 2;
+
+    //
+    // a. lidar frontend:
+    //
+    // get relative pose measurement:
+    Eigen::Matrix4d relative_pose =
+        (last_key_frame_.pose.inverse() * current_key_frame_.pose)
+            .cast<double>();
+    // TODO: add constraint, lidar frontend / loop closure detection:
+    sliding_window_ptr_->AddPRVAGRelativePoseFactor(
+        param_index_i, param_index_j, relative_pose,
+        measurement_config_.noise.lidar_odometry);
+    //
+    // b. IMU pre-integration:
+    //
+    if (measurement_config_.source.imu_pre_integration) {
+      // TODO: add constraint, IMU pre-integraion:
+      sliding_window_ptr_->AddPRVAGIMUPreIntegrationFactor(
+          param_index_i, param_index_j, imu_pre_integration_);
+    }
+  }
+
+  // move forward:
+  last_key_frame_ = current_key_frame_;
+
+   ```
 * **Module Hyper Params.**
     * **Sliding Window Config** [here](src/lidar_localization/config/matching/sliding_window.yaml)
 
