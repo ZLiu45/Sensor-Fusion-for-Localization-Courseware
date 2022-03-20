@@ -252,7 +252,7 @@ bool CeresSlidingWindow::Optimize() {
           new sliding_window::ParamPRVAG();
 
       // TODO: add parameter block:
-      problem.AddParameterBlock(target_key_frame, prvag, 15,
+      problem.AddParameterBlock(target_key_frame.prvag, 15,
                                 local_parameterization);
       if (target_key_frame.fixed) {
         problem.SetParameterBlockConstant(target_key_frame.prvag);
