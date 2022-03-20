@@ -71,8 +71,8 @@ public:
     const Sophus::SO3d ori_ij_est = Sophus::SO3d::exp(theta_ij);
     //
     // get square root of information matrix:
-    Eigen::LLT<Matrix15d> LowerI(I_);
-    Matrix15d sqrt_info = LowerI.matrixL().transpose();
+    Matrix15d sqrt_info =
+        Eigen::LLT<Eigen::Matrix<double, 15, 15>>(I_).matrixL().transpose();
 
     //
     // compute residual:
@@ -116,9 +116,9 @@ public:
             -J_r_inv * ori_ij.matrix().transpose();
         jacobian_i.block<3, 3>(INDEX_R, INDEX_G) =
             -J_r_inv *
-            Sophus::SO3d::exp(res.block<3, 1>(INDEX_R, 0)).matrix().inverse() *
-            JacobianR(J_.block<3, 3>(INDEX_R, INDEX_G) *
-                      (b_g_i - m_.block<3, 1>(INDEX_G, 0))) *
+            (Sophus::SO3d::exp(res.block<3, 1>(INDEX_R, 0)))
+                .matrix()
+                .inverse() *
             J_.block<3, 3>(INDEX_R, INDEX_G);
 
         // c. residual, velocity:

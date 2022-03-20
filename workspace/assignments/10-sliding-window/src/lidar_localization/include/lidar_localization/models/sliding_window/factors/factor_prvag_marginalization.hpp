@@ -20,8 +20,8 @@ namespace sliding_window {
 
 class FactorPRVAGMarginalization : public ceres::SizedCostFunction<15, 15> {
 public:
-  static const int INDEX_M = 0;
-  static const int INDEX_R = 15;
+  static constexpr int INDEX_M = 0;
+  static constexpr int INDEX_R = 15;
 
   FactorPRVAGMarginalization(void) {
     H_ = Eigen::MatrixXd::Zero(30, 30);
@@ -43,18 +43,17 @@ public:
     // compute:
     Evaluate(res_map_matching_pose, residuals, jacobians);
     const Eigen::MatrixXd &J_m = jacobians.at(0);
-
     //
     // Update H:
     //
     // a. H_mm:
-    const Eigen::MatrixXd H_mm = J_m.transpose() * J_m;
-    H_.block<15, 15>(INDEX_M, INDEX_M) += H_mm;
+    H_.block<15, 15>(INDEX_M, INDEX_M) += J_m.transpose() * J_m;
+
     //
     // Update b:
     //
     // a. b_m:
-    b_.block<15, 1>(INDEX_M, 1) += J_m.transpose() * residuals;
+    b_.block<15, 1>(INDEX_M, 0) += J_m.transpose() * residuals;
   }
 
   void SetResRelativePose(const ceres::CostFunction *residual,
@@ -117,7 +116,7 @@ public:
     const Eigen::MatrixXd H_mr = J_m.transpose() * J_r;
     H_.block<15, 15>(INDEX_M, INDEX_R) += H_mr;
     // c. H_rm:
-    H_.block<15, 15>(INDEX_R, INDEX_R) += H_mr.transpose();
+    H_.block<15, 15>(INDEX_R, INDEX_M) += H_mr.transpose();
     // d. H_rr:
     const Eigen::MatrixXd H_rr = J_r.transpose() * J_r;
     H_.block<15, 15>(INDEX_R, INDEX_R) += H_rr;
@@ -133,6 +132,7 @@ public:
 
   void Marginalize(const double *raw_param_r_0) {
     x_0_ = Eigen::Map<const Eigen::Matrix<double, 15, 1>>(raw_param_r_0);
+
     // implement marginalization logic ???
     const Eigen::MatrixXd &H_mm =
         0.5 * (H_.block<15, 15>(INDEX_M, INDEX_M) +
@@ -146,12 +146,11 @@ public:
                             .select(saes.eigenvalues().array().inverse(), 0))
             .asDiagonal() *
         saes.eigenvectors().transpose();
-
     Eigen::MatrixXd H_rm_mm_inv = H_rm * H_mm_inv;
 
     Eigen::MatrixXd H_rr_prime = H_rr - H_rm_mm_inv * H_rm.transpose();
     Eigen::VectorXd b_r_prime =
-        b_.block<15, 1>(INDEX_R, 0) * H_rm_mm_inv * b_.block<15, 1>(INDEX_M, 0);
+        b_.block<15, 1>(INDEX_R, 0) - H_rm_mm_inv * b_.block<15, 1>(INDEX_M, 0);
 
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> saes2(H_rr_prime);
     Eigen::VectorXd S =

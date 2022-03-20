@@ -239,7 +239,6 @@ bool CeresSlidingWindow::Optimize() {
 
   // get key frames count:
   const int N = GetNumParamBlocks();
-
   if ((kWindowSize + 1 <= N)) {
     // create new sliding window optimization problem:
     ceres::Problem problem;
@@ -250,7 +249,6 @@ bool CeresSlidingWindow::Optimize() {
 
       ceres::LocalParameterization *local_parameterization =
           new sliding_window::ParamPRVAG();
-
       // TODO: add parameter block:
       problem.AddParameterBlock(target_key_frame.prvag, 15,
                                 local_parameterization);
@@ -266,27 +264,27 @@ bool CeresSlidingWindow::Optimize() {
         !residual_blocks_.imu_pre_integration.empty()) {
       auto &key_frame_m = optimized_key_frames_.at(N - kWindowSize - 1);
       auto &key_frame_r = optimized_key_frames_.at(N - kWindowSize - 0);
-
       const ceres::CostFunction *factor_map_matching_pose =
           GetResMapMatchingPose(residual_blocks_.map_matching_pose.front());
       const ceres::CostFunction *factor_relative_pose =
           GetResRelativePose(residual_blocks_.relative_pose.front());
       const ceres::CostFunction *factor_imu_pre_integration =
           GetResIMUPreIntegration(residual_blocks_.imu_pre_integration.front());
-
+     
       sliding_window::FactorPRVAGMarginalization *factor_marginalization =
           new sliding_window::FactorPRVAGMarginalization();
-
       factor_marginalization->SetResMapMatchingPose(
           factor_map_matching_pose, std::vector<double *>{key_frame_m.prvag});
+
       factor_marginalization->SetResRelativePose(
           factor_relative_pose,
           std::vector<double *>{key_frame_m.prvag, key_frame_r.prvag});
+
       factor_marginalization->SetResIMUPreIntegration(
           factor_imu_pre_integration,
           std::vector<double *>{key_frame_m.prvag, key_frame_r.prvag});
-      factor_marginalization->Marginalize(key_frame_r.prvag);
 
+      factor_marginalization->Marginalize(key_frame_r.prvag);
       // add marginalization factor into sliding window
       problem.AddResidualBlock(factor_marginalization, NULL, key_frame_r.prvag);
 
