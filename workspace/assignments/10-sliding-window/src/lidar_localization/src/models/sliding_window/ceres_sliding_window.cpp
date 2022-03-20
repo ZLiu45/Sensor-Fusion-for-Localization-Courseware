@@ -29,7 +29,7 @@ CeresSlidingWindow::CeresSlidingWindow(const int N) : kWindowSize(N) {
   config_.options.num_threads = 2;
   config_.options.max_num_iterations = 1000;
   config_.options.max_solver_time_in_seconds = 0.10;
-  // config_.options.minimizer_progress_to_stdout = true;
+  config_.options.minimizer_progress_to_stdout = true;
 
   //
   // clear data buffer:
@@ -239,6 +239,7 @@ bool CeresSlidingWindow::Optimize() {
 
   // get key frames count:
   const int N = GetNumParamBlocks();
+  LOG(INFO) << N;
   if ((kWindowSize + 1 <= N)) {
     // create new sliding window optimization problem:
     ceres::Problem problem;
@@ -256,6 +257,7 @@ bool CeresSlidingWindow::Optimize() {
         problem.SetParameterBlockConstant(target_key_frame.prvag);
       }
     }
+    LOG(INFO) << "Added Parameters";
 
     // add residual blocks:
     // b.1. marginalization constraint:
@@ -270,7 +272,7 @@ bool CeresSlidingWindow::Optimize() {
           GetResRelativePose(residual_blocks_.relative_pose.front());
       const ceres::CostFunction *factor_imu_pre_integration =
           GetResIMUPreIntegration(residual_blocks_.imu_pre_integration.front());
-     
+
       sliding_window::FactorPRVAGMarginalization *factor_marginalization =
           new sliding_window::FactorPRVAGMarginalization();
       factor_marginalization->SetResMapMatchingPose(
@@ -293,6 +295,7 @@ bool CeresSlidingWindow::Optimize() {
       residual_blocks_.imu_pre_integration.pop_front();
     }
 
+    LOG(INFO) << "set marginalization factor";
     // b.2. map matching pose constraint:
     if (!residual_blocks_.map_matching_pose.empty()) {
       for (const auto &residual_map_matching_pose :
@@ -304,10 +307,12 @@ bool CeresSlidingWindow::Optimize() {
             GetResMapMatchingPose(residual_map_matching_pose);
 
         // add map matching factor into sliding window
-        problem.AddResidualBlock(factor_map_matching_pose, NULL,
+        problem.AddResidualBlock(factor_map_matching_pose,
+                                 config_.loss_function_ptr.get(),
                                  key_frame.prvag);
       }
     }
+    LOG(INFO) << "set map matching factor";
 
     // b.3. relative pose constraint:
     if (!residual_blocks_.relative_pose.empty()) {
@@ -322,10 +327,12 @@ bool CeresSlidingWindow::Optimize() {
             GetResRelativePose(residual_relative_pose);
 
         // add relative pose factor into sliding window
-        problem.AddResidualBlock(factor_relative_pose, NULL, key_frame_i.prvag,
-                                 key_frame_j.prvag);
+        problem.AddResidualBlock(factor_relative_pose,
+                                 config_.loss_function_ptr.get(),
+                                 key_frame_i.prvag, key_frame_j.prvag);
       }
     }
+    LOG(INFO) << "set relative pose factor";
 
     // TODO: b.4. IMU pre-integration constraint
     if (!residual_blocks_.imu_pre_integration.empty()) {
@@ -341,10 +348,12 @@ bool CeresSlidingWindow::Optimize() {
                 GetResIMUPreIntegration(residual_imu_pre_integration);
 
         // TODO: add IMU factor into sliding window
-        problem.AddResidualBlock(factor_imu_pre_integration, NULL,
+        problem.AddResidualBlock(factor_imu_pre_integration,
+                                 nullptr,
                                  key_frame_i.prvag, key_frame_j.prvag);
       }
     }
+    LOG(INFO) << "set imu factor";
 
     // solve:
     ceres::Solver::Summary summary;
