@@ -125,13 +125,9 @@ bool SlidingWindow::Update(const PoseData &laser_odom,
                            const PoseData &map_matching_odom,
                            const IMUData &imu_data, const PoseData &gnss_pose) {
   ResetParam();
-  LOG(INFO) << "reset params";
   if (MaybeNewKeyFrame(laser_odom, map_matching_odom, imu_data, gnss_pose)) {
-    LOG(INFO) << "update";
     Update();
-    LOG(INFO) << "maybe optimized";
     MaybeOptimized();
-    LOG(INFO) << "finish maybe optimized";
   }
 
   return true;

@@ -115,20 +115,21 @@ private:
     Eigen::Matrix3d J_r_inv = Eigen::Matrix3d::Identity();
 
     double theta = w.norm();
+    double half_theta = 0.5 * theta;
 
     if (theta > 1e-5) {
       Eigen::Vector3d k = w.normalized();
       Eigen::Matrix3d K = Sophus::SO3d::hat(k);
-
-      J_r_inv =
-          J_r_inv + 0.5 * K +
-          (1.0 - (1.0 + std::cos(theta)) * theta / (2.0 * std::sin(theta))) *
-              K * K;
+      const double half_theta_cot_half_theta =
+          half_theta * std::cos(half_theta) / std::sin(half_theta);
+      Eigen::Matrix3d I33 = Eigen::Matrix3d::Identity();
+      J_r_inv = half_theta_cot_half_theta * I33 +
+                (1 - half_theta_cot_half_theta) * k * k.transpose() +
+                half_theta * K;
     }
 
     return J_r_inv;
   }
-
   Eigen::VectorXd m_;
   Eigen::MatrixXd I_;
 };

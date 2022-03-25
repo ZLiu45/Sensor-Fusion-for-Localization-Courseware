@@ -133,7 +133,6 @@ public:
   void Marginalize(const double *raw_param_r_0) {
     x_0_ = Eigen::Map<const Eigen::Matrix<double, 15, 1>>(raw_param_r_0);
 
-    // implement marginalization logic ???
     const Eigen::MatrixXd &H_mm =
         0.5 * (H_.block<15, 15>(INDEX_M, INDEX_M) +
                H_.block<15, 15>(INDEX_M, INDEX_M).transpose());
@@ -173,7 +172,7 @@ public:
     //
     Eigen::Map<const Eigen::Matrix<double, 15, 1>> x(parameters[0]);
     Eigen::VectorXd dx = x - x_0_;
-
+    // Eigen::VectorXd dx = x;
     //
     // compute residual:
     //

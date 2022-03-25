@@ -10,12 +10,12 @@ key_frame:
     # max. distance between two key frames:
     max_distance: 0.25
     # max. time interval between two key frames:
-    max_interval: 0.10
+    max_interval: 0.1
 
 #
 # sliding window size:
 #
-sliding_window_size: 20
+sliding_window_size: 10
 
 #
 # select measurements:
@@ -28,10 +28,10 @@ measurements:
 # measurement configs:
 #
 lidar_odometry:
-    noise: [1.0, 1.0, 1.0, 0.01, 0.01, 0.01] # x y z yaw roll pitch
+    noise: [0.5, 0.5, 1.0, 0.001, 0.001, 0.001] # x y z yaw roll pitch
 
 map_matching:
-    noise: [1.0, 1.0, 4.0, 0.01, 0.01, 0.01] # x y z yaw roll pitch
+    noise: [0.5, 0.5, 1.0, 0.005, 0.005, 0.005] # x y z yaw roll pitch
 
 gnss_position:
     noise: [1.0, 1.0, 4.0] # x y z
