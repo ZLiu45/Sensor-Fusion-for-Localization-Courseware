@@ -109,6 +109,7 @@ class SlidingWindow {
         } noise;
     };
     MeasurementConfig measurement_config_;
+    
 };
 
 } // namespace lidar_localization
